@@ -40,6 +40,7 @@ class Operate:
                         'output': False,
                         'save_inference': False,
                         'save_image': False}
+        self.v = 5
         self.quit = False
         self.pred_fname = ''
         self.request_recover_robot = False
@@ -134,26 +135,35 @@ class Operate:
     # keyboard teleoperation        
     def update_keyboard(self):
         for event in pygame.event.get():
-            ############### add your codes below ###############
+
+            # increase velocity
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                self.v = np.clip(self.v + 1, 0, 10)
+            # decrease velocity
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                self.v = np.clip(self.v - 1, 0, 10)
+
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
-                self.command['motion'] = [5, 0]
+                self.command['motion'] = [self.v, 0]
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                self.command['motion'] = [-5, 0]
+                self.command['motion'] = [-self.v, 0]
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
-                self.command['motion'] = [0, 5]
+                self.command['motion'] = [0, self.v]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
-                self.command['motion'] = [0, -5]
+                self.command['motion'] = [0, -self.v]
             # stop on key up
             elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]):
                 self.command['motion'] = [0, 0]
-            ####################################################
-            # stop
+
+            # stop and reset velocity
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
+                self.v = 5
+
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
