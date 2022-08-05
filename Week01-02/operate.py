@@ -155,8 +155,14 @@ class Operate:
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
                 self.command['motion'] = [0, -self.v]
+            # arc left forward
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                self.command['motion'] = [self.v, self.v/2]
+            # arc right forward
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                self.command['motion'] = [self.v, -self.v/2]
             # stop on key up
-            elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]):
+            elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_e, pygame.K_q]):
                 self.command['motion'] = [0, 0]
 
             # stop and reset velocity
