@@ -37,6 +37,11 @@ CAUTION! Please only procced with this option if you know what you are doing, an
 
 Here is a [tutorial](https://www.youtube.com/watch?v=CWQMYN12QD0&ab_channel=TechnoTim) you can follow to set up dual boot on your computer. 
 
+## Option 4: Remote desktop
+If you are struggling to implement any of these 3 options on your laptop (especially for Mac M1 users), you may want to try to use a remote desktop software (eg. AnyDesk) and install Ubuntu on your home desktop if you have one. 
+
+Note that you will only be able to use this method with the simulator and you won't be able to connect to the physical robot with the remote desktop. However, for Mac M1 users, as long as you have installed the required python dependencies, you will be able to connect to physical robot with your Mac and run the python code locally (eg. operate.py). 
+
 # Install the simulator environment from scratch in an empty Ubuntu 18
 
 ***Note: ROS-Melodic requires Ubuntu 18, and you only need to do this if you have chosen either Option 2 or 3***
