@@ -134,8 +134,27 @@ class Operate:
 
     # keyboard teleoperation        
     def update_keyboard(self):
-        for event in pygame.event.get():
+        keys = pygame.key.get_pressed()
 
+        if keys[pygame.K_w] and keys[pygame.K_a]:
+            self.command['motion'] = [self.v, self.v/2]
+
+        elif keys[pygame.K_w] and keys[pygame.K_d]:
+            self.command['motion'] = [self.v, -self.v/2]
+        
+        elif keys[pygame.K_w]:
+            self.command['motion'] = [self.v, 0]
+
+        elif keys[pygame.K_a]:
+            self.command['motion'] = [0, self.v]
+
+        elif keys[pygame.K_d]:
+            self.command['motion'] = [0, -self.v]
+        
+        elif keys[pygame.K_s]:
+            self.command['motion'] = [-self.v, 0]
+
+        for event in pygame.event.get():
             # increase velocity
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
                 self.v = np.clip(self.v + 1, 0, 10)
@@ -143,24 +162,6 @@ class Operate:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
                 self.v = np.clip(self.v - 1, 0, 10)
 
-            # drive forward
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
-                self.command['motion'] = [self.v, 0]
-            # drive backward
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                self.command['motion'] = [-self.v, 0]
-            # turn left
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
-                self.command['motion'] = [0, self.v]
-            # drive right
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
-                self.command['motion'] = [0, -self.v]
-            # arc left forward
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                self.command['motion'] = [self.v, self.v/2]
-            # arc right forward
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_e:
-                self.command['motion'] = [self.v, -self.v/2]
             # stop on key up
             elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_e, pygame.K_q]):
                 self.command['motion'] = [0, 0]
