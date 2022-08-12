@@ -89,7 +89,7 @@ def calibrateBaseline(scale):
     baseline = 0
     for delta_time, wheel_vel in zip(delta_times, wheel_velocities_range):
         # TODO: replace with your code to compute the baseline parameter using scale, wheel_vel, and delta_time
-        baseline += wheel_vel * scale * delta_time / 180
+        baseline += wheel_vel * scale * delta_time / np.pi
     baseline /= num
     print("The baseline parameter is estimated as {:.6f} m.".format(baseline))
 
