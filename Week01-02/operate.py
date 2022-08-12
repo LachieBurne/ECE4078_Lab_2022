@@ -136,19 +136,19 @@ class Operate:
         for event in pygame.event.get():
             ############### add your codes below ###############
             # drive forward
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
                 self.command['motion'] = [5, 0]
             # drive backward
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
                 self.command['motion'] = [-5, 0]
             # turn left
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
                 self.command['motion'] = [0, 5]
             # drive right
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_d:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 self.command['motion'] = [0, -5]
             # stop on key up
-            elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d]):
+            elif event.type == pygame.KEYUP and (event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]):
                 self.command['motion'] = [0, 0]
             ####################################################
             # stop
