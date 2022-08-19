@@ -168,4 +168,14 @@ You can connect an external screen, keyboard, and mouse to the robot, then switc
 - If using the PenguinPi robot in person, please be gentle as they can be quite fragile
 - If installing from scratch and the command to install Gazebo: "curl -sSL http://get.gazebosim.org | sh" does nothing, follow the instructions under "Alternative installation: step-by-step" in http://gazebosim.org/tutorials?tut=install_ubuntu 
 - Slow VM on Mac: this might be a resolution issue, see [here](https://www.reddit.com/r/virtualbox/comments/houi9k/how_to_fix_virtualbox_61_running_slow_on_mac/) for fixes. You can also try [enabling 3D acceleration](https://superuser.com/questions/172989/virtualbox-running-ubuntu-is-slow-mac-os-x-host) in VistualBox
+- If you get the following error (especially for WSL2 users),
+
+![cmakelist error](/Week01-02/cmake_error.png "cmakelist error")
+
+You can try using ```catkin build``` instead of ```catkin_make```. Please try to the following steps:
+
+1. remove the ```devel/``` and ```build/``` folder using ```sudo rm -r devel/ build/```
+2. ```catkin build```
+3. ```source devel/setup.bash```
+4. Try your code again. If this works, then you should replace all future ```catkin_make``` command with ```catkin build```
 
