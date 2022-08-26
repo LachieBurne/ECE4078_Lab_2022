@@ -38,7 +38,7 @@ class Operate:
             self.pibot = PenguinPi(args.ip, args.port)
 
         # initialise SLAM parameters
-        self.ekf = self.init_ekf(args.calib_dir, args.ip)
+        self.ekf = self.init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length = 0.07) # size of the ARUCO markers
 
@@ -117,16 +117,27 @@ class Operate:
             self.notification = f'{f_} is saved'
 
     # wheel and camera calibration for SLAM
-    def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
-        camera_matrix = np.loadtxt(fileK, delimiter=',')
-        fileD = "{}distCoeffs.txt".format(datadir)
-        dist_coeffs = np.loadtxt(fileD, delimiter=',')
-        fileS = "{}scale.txt".format(datadir)
-        scale = np.loadtxt(fileS, delimiter=',')
-        if ip == 'localhost':
-            scale /= 2
-        fileB = "{}baseline.txt".format(datadir)  
+    def init_ekf(self, datadir, ip, sim=False):
+        if not sim:
+            fileK = "{}intrinsic.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
+            fileD = "{}distCoeffs.txt".format(datadir)
+            dist_coeffs = np.loadtxt(fileD, delimiter=',')
+            fileS = "{}scale.txt".format(datadir)
+            scale = np.loadtxt(fileS, delimiter=',')
+            if ip == 'localhost':
+                scale /= 2
+            fileB = "{}baseline.txt".format(datadir)  
+        else:
+            fileK = "{}intrinsic_sim.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
+            fileD = "{}distCoeffs.txt".format(datadir)
+            dist_coeffs = np.loadtxt(fileD, delimiter=',')
+            fileS = "{}scale_sim.txt".format(datadir)
+            scale = np.loadtxt(fileS, delimiter=',')
+            if ip == 'localhost':
+                scale /= 2
+            fileB = "{}baseline_sim.txt".format(datadir)  
         baseline = np.loadtxt(fileB, delimiter=',')
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
         return EKF(robot)
@@ -194,16 +205,19 @@ class Operate:
             ########### replace with your M1 codes ###########
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                pass # TODO: replace with your M1 code to make the robot drive forward
+                self.command['motion'] = [5, 0]
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                pass # TODO: replace with your M1 code to make the robot drive backward
+                self.command['motion'] = [-5, 0]
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                pass # TODO: replace with your M1 code to make the robot turn left
+                self.command['motion'] = [0, 5]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                pass # TODO: replace with your M1 code to make the robot turn right
+                self.command['motion'] = [0, -5]
+            # stop on key up
+            elif event.type == pygame.KEYUP and (event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]):
+                self.command['motion'] = [0, 0]
             ####################################################
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
@@ -261,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--using_sim", action='store_true')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
