@@ -38,7 +38,7 @@ class Operate:
             self.pibot = PenguinPi(args.ip, args.port)
 
         # initialise SLAM parameters
-        self.ekf = self.init_ekf(args.calib_dir, args.ip)
+        self.ekf = self.init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length = 0.07) # size of the ARUCO markers
 
@@ -117,16 +117,27 @@ class Operate:
             self.notification = f'{f_} is saved'
 
     # wheel and camera calibration for SLAM
-    def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
-        camera_matrix = np.loadtxt(fileK, delimiter=',')
-        fileD = "{}distCoeffs.txt".format(datadir)
-        dist_coeffs = np.loadtxt(fileD, delimiter=',')
-        fileS = "{}scale.txt".format(datadir)
-        scale = np.loadtxt(fileS, delimiter=',')
-        if ip == 'localhost':
-            scale /= 2
-        fileB = "{}baseline.txt".format(datadir)  
+    def init_ekf(self, datadir, ip, sim=False):
+        if not sim:
+            fileK = "{}intrinsic.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
+            fileD = "{}distCoeffs.txt".format(datadir)
+            dist_coeffs = np.loadtxt(fileD, delimiter=',')
+            fileS = "{}scale.txt".format(datadir)
+            scale = np.loadtxt(fileS, delimiter=',')
+            if ip == 'localhost':
+                scale /= 2
+            fileB = "{}baseline.txt".format(datadir)  
+        else:
+            fileK = "{}intrinsic_sim.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
+            fileD = "{}distCoeffs.txt".format(datadir)
+            dist_coeffs = np.loadtxt(fileD, delimiter=',')
+            fileS = "{}scale_sim.txt".format(datadir)
+            scale = np.loadtxt(fileS, delimiter=',')
+            if ip == 'localhost':
+                scale /= 2
+            fileB = "{}baseline_sim.txt".format(datadir)  
         baseline = np.loadtxt(fileB, delimiter=',')
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
         return EKF(robot)
@@ -264,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--using_sim", action='store_true')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
