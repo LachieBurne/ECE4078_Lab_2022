@@ -43,12 +43,9 @@ def calibrateWheelRadius():
     num = len(wheel_velocities_range)
     scale = 0
     for delta_time, wheel_vel in zip(delta_times, wheel_velocities_range):
-<<<<<<< HEAD
         # TODO: replace with your code to compute the scale parameter using wheel_vel and delta_time
         scale += (1.0 / delta_time) / wheel_vel
-=======
-        scale += (1/delta_time)/wheel_vel
->>>>>>> 4246e27bd235ef2a6667e9abf155e87b6204ef95
+#         scale += (1/delta_time)/wheel_vel
     scale /= num
     print("The scale parameter is estimated as {:.6f} m/ticks.".format(scale))
 
@@ -92,12 +89,9 @@ def calibrateBaseline(scale):
     num = len(wheel_velocities_range)
     baseline = 0
     for delta_time, wheel_vel in zip(delta_times, wheel_velocities_range):
-<<<<<<< HEAD
         # TODO: replace with your code to compute the baseline parameter using scale, wheel_vel, and delta_time
         baseline += wheel_vel * scale * delta_time / np.pi
-=======
-        baseline += (wheel_vel*scale*delta_time)/180
->>>>>>> 4246e27bd235ef2a6667e9abf155e87b6204ef95
+#         baseline += (wheel_vel*scale*delta_time)/180
     baseline /= num
     print("The baseline parameter is estimated as {:.6f} m.".format(baseline))
 
@@ -119,12 +113,12 @@ if __name__ == "__main__":
 
     print('Calibrating PiBot scale...\n')
     scale = calibrateWheelRadius()
-    fileNameS = "{}scale.txt".format(dataDir)
+    fileNameS = "{}scale_sim_test.txt".format(dataDir)
     np.savetxt(fileNameS, np.array([scale]), delimiter=',')
 
     print('Calibrating PiBot baseline...\n')
     baseline = calibrateBaseline(scale)
-    fileNameB = "{}baseline.txt".format(dataDir)
+    fileNameB = "{}baseline_sim_test.txt".format(dataDir)
     np.savetxt(fileNameB, np.array([baseline]), delimiter=',')
 
     print('Finished calibration')
