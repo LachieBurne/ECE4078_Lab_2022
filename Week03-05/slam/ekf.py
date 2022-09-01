@@ -104,7 +104,9 @@ class EKF:
     def update(self, measurements):
         if not measurements:
             return
-
+        
+        x = self.get_state_vector()
+        
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
         idx_list = [self.taglist.index(tag) for tag in tags]
@@ -124,8 +126,6 @@ class EKF:
         z_hat = self.robot.measure(self.markers, idx_list)
         z_hat = z_hat.reshape((-1,1),order="F")
         C = self.robot.derivative_measure(self.markers, idx_list)
-
-        x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x
         S = C @ self.P @ C.T + R
