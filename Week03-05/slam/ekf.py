@@ -92,11 +92,15 @@ class EKF:
 
         # TODO: add your codes here to compute the predicted x
         self.robot.drive(raw_drive_meas)
-        Q = self.predict_covariance(raw_drive_meas)
+        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.03: #The robot is within 0.01 unit square of the origin
+            Q = 0
+        else:
+            Q = self.predict_covariance(raw_drive_meas)
+            
         self.P = A @ self.P @ A.T + Q
 
-        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01): #The robot is within 0.01 unit square of the origin
-            self.P = self.P * 0.7 # Reduce Uncertainty
+#         if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01): #The robot is within 0.01 unit square of the origin
+#             self.P = self.P * 0.7 # Reduce Uncertainty
 
     # the update step of EKF
     def update(self, measurements):
