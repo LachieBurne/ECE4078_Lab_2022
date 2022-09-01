@@ -92,9 +92,6 @@ class EKF:
 
         # TODO: add your codes here to compute the predicted x
         self.robot.drive(raw_drive_meas)
-        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
-            n = self.number_landmarks()*2 + 3
-            A = np.eye(n)
             
         Q = self.predict_covariance(raw_drive_meas)
             
@@ -115,8 +112,13 @@ class EKF:
         # Stack measurements and set covariance
         z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
         R = np.zeros((2*len(measurements),2*len(measurements)))
-        for i in range(len(measurements)):
-            R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+        
+        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
+            for i in range(len(measurements)):
+                R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+        else:
+            for i in range(len(measurements)):
+                R[2*i:2*i+2,2*i:2*i+2] = 0
 
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
