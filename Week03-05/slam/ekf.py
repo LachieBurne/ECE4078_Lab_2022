@@ -117,7 +117,7 @@ class EKF:
         
         if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
             for i in range(len(measurements)):
-                R[2*i:2*i+2,2*i:2*i+2] = 0
+                R[2*i:2*i+2,2*i:2*i+2] = 0.00001
         else:
             for i in range(len(measurements)):
                 R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
