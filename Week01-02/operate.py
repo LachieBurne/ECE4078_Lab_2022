@@ -136,52 +136,43 @@ class Operate:
     def update_keyboard(self):
         keys = pygame.key.get_pressed()
 
-        if keys[pygame.K_w] and keys[pygame.K_a]:
+        if keys[pygame.K_UP] and keys[pygame.K_LEFT]:
             self.command['motion'] = [self.v, self.v/2]
 
-        elif keys[pygame.K_w] and keys[pygame.K_d]:
+        elif keys[pygame.K_UP] and keys[pygame.K_RIGHT]:
             self.command['motion'] = [self.v, -self.v/2]
         
-        elif keys[pygame.K_w]:
+        elif keys[pygame.K_UP]:
             self.command['motion'] = [self.v, 0]
 
-        elif keys[pygame.K_a]:
+        elif keys[pygame.K_RIGHT]:
             self.command['motion'] = [0, self.v]
 
-        elif keys[pygame.K_d]:
+        elif keys[pygame.K_LEFT]:
             self.command['motion'] = [0, -self.v]
         
-        elif keys[pygame.K_s]:
+        elif keys[pygame.K_DOWN]:
             self.command['motion'] = [-self.v, 0]
 
-        elif keys[pygame.K_w] == 0 and keys[pygame.K_a] == 0 and keys[pygame.K_d] == 0 and keys[pygame.K_s] == 0:
+        elif keys[pygame.K_UP] == 0 and keys[pygame.K_LEFT] == 0 and keys[pygame.K_RIGHT] == 0 and keys[pygame.K_DOWN] == 0:
             self.command['motion'] = [0, 0]
 
-        for event in pygame.event.get():
-            # increase velocity
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.v = np.clip(self.v + 1, 0, 10)
-            # decrease velocity
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.v = np.clip(self.v - 1, 0, 10)
+        elif keys[pygame.K_w]:
+            self.v = np.clip(self.v + 1, 0, 10)
 
-            # # stop on key up
-            # elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_e, pygame.K_q]):
-            #     self.command['motion'] = [0, 0]
+        elif keys[pygame.K_s]:
+            self.v = np.clip(self.v - 1, 0, 10)
 
-            # stop and reset velocity
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                self.command['motion'] = [0, 0]
-                self.v = 5
+        elif keys[pygame.K_SPACE]:
+            self.command['motion'] = [0, 0]
+            self.v = 2
 
-            # save image
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
-                self.command['save_image'] = True
-            # quit
-            elif event.type == pygame.QUIT:
-                self.quit = True
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self.quit = True
+        elif keys[pygame.K_i]:
+            self.command['save_image'] = True
+
+        elif keys[pygame.K_ESCAPE]:
+            self.quit = True
+            
         if self.quit:
             pygame.quit()
             sys.exit()
