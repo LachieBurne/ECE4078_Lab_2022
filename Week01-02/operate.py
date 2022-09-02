@@ -154,7 +154,7 @@ class Operate:
         elif keys[pygame.K_s]:
             self.command['motion'] = [-self.v, 0]
 
-        elif keys.all() == 0:
+        elif keys[pygame.K_w] == 0 and keys[pygame.K_a] == 0 and keys[pygame.K_d] == 0 and keys[pygame.K_s] == 0:
             self.command['motion'] = [0, 0]
 
         for event in pygame.event.get():
