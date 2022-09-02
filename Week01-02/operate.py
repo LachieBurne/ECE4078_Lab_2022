@@ -154,6 +154,9 @@ class Operate:
         elif keys[pygame.K_s]:
             self.command['motion'] = [-self.v, 0]
 
+        elif keys.all() == 0:
+            self.command['motion'] = [0, 0]
+
         for event in pygame.event.get():
             # increase velocity
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
@@ -162,9 +165,9 @@ class Operate:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
                 self.v = np.clip(self.v - 1, 0, 10)
 
-            # stop on key up
-            elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_e, pygame.K_q]):
-                self.command['motion'] = [0, 0]
+            # # stop on key up
+            # elif event.type == pygame.KEYUP and (event.key in [pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, pygame.K_e, pygame.K_q]):
+            #     self.command['motion'] = [0, 0]
 
             # stop and reset velocity
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
