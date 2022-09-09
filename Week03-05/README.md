@@ -5,6 +5,9 @@
 - [Activities](#Activities)
     - [Calibration (week 3)](#Calibration-week-3)
     - [SLAM (week 4-5)](#SLAM-week-4-5)
+- [M2 Marking](#M2-Marking)
+    - [Evaulation scheme](#evaluation-scheme)
+    - [Instructions](#marking-instructions)
 - [Technical FAQs](#FAQs-M2)
 
 
@@ -115,6 +118,25 @@ An evaluation script [SLAM_eval.py](SLAM_eval.py) is provided for evaluating the
 Run ```python3 SLAM_eval.py TRUEMAP.txt lab_output/slam.txt``` and you should see a printout of the evalution results:
  
 ![Example output of SLAM evaluation script](screenshots/SLAM_eval_output.png?raw=true "Example output of SLAM evaluation script")
+
+## M2 Marking
+### Evaluation scheme
+To allow for the best performance of your SLAM module, you will be marked based on finding the 10 ARUCO markers, *the RMSE after alignment* between your estimations and the true locations of these markers during a live demonstration in both the simulation and the physical robot conducted in a **NEW MAP** in week 6. After the live demo, the map generated will be marked against the groundtruth map using [SLAM_eval.py](SLAM_eval.py). 5% of the total mark will be deducted for each marker the robot has collided into. Your M2 mark is computed as using the following:
+
+**For simulation evaluation:**
+simulation_score = (0.2 - Aligned_RMSE)/(0.2 - 0.025) x 80 + NumberOfFoundMarkers x 2
+
+**For physical robot evaluation:**
+robot_score = (0.15 - Aligned_RMSE)/(0.15 - 0.02) x 80 + NumberOfFoundMarkers x 2
+
+**Total mark = 0.8 x simulation_score + 0.2 x robot_score - 0.05 x NumberOfCollidedMarkers**
+
+*For the remote session, total mark = simulation score
+
+**Note:** If your Aligned_RMSE value goes beyond the upper bound (0.2 for sim and 0.15 for robot), your score will be 0. Similarly, if the value goes below the lower bound, (0.025 for sim and 0.02 for robot), your will get full score. 
+
+### Marking instructions
+Please see [M2 marking instructions](M2_marking_instructions.md)
 
 ## FAQs: M2
 - If you are using Mac to run the VM and are encountering performance issues, please follow the steps in [this link](https://www.reddit.com/r/virtualbox/comments/houi9k/how_to_fix_virtualbox_61_running_slow_on_mac/) 
