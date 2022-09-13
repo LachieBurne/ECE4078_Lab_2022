@@ -1,4 +1,5 @@
 # estimate the pose of a target object detected
+from turtle import position
 import numpy as np
 import json
 import os
@@ -102,6 +103,89 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     
     return target_pose_dict
 
+def merge_to_mean(position_est, remove_outlier = False):
+
+    # Inputs:
+    # position_est : An numpy array of coordinates {position_est[estimation #][0 = x, 1 = y]}
+    # remove_outlier : Boolean (Remove outliers using Standard Distribution z-scores)
+    # Outputs:
+    # new_mean : An numpy array of coordinates {new_mean[0 = x, 1 = y]}
+
+    # Check if the position_est has no elements
+    if len(position_est) == 0:
+        return None
+
+    # Set up working parameters
+    position_est_result = []
+    z_threshold = 3
+
+    # Compute mean and standard deviations
+    means = np.mean(position_est, axis = 0)
+    stds = np.std(position_est, axis = 0)
+    mean_x = means[0]
+    std_x = stds[0]
+    mean_y = means[1]
+    std_y = stds[1]
+    
+    # Remove outliers
+    if remove_outlier:
+        for i in range(len(position_est)):
+            coordinates = position_est[i]
+            z_score_x = (coordinates[0] - mean_x)/std_x
+            z_score_y = (coordinates[1] - mean_y)/std_y
+            if np.abs(z_score_x) > z_threshold or np.abs(z_score_y) > z_threshold:
+                position_est_result.append(coordinates)
+    else:
+        position_est_result = position_est
+
+    # Compute Mean
+    new_mean = np.mean(position_est_result, axis = 0)
+
+    return new_mean
+
+
+def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False):
+
+    # Inputs:
+    # position_est : An numpy array of coordinates {position_est[estimation #][0 = x, 1 = y]}
+    # distance_threshold : the distance assumption that two fruits of the same type will be apart for
+    # remove_outlier : Boolean (Remove outliers using Standard Distribution z-scores)
+    # Outputs:
+    # new_mean : An numpy array of coordinates {new_mean[0 = x, 1 = y]}
+
+    # Initialize two sets of position estimations for each fruit of the same type
+    position_est1 = []
+    position_est2 = []
+
+    # Compute distance
+    for i in range(len(position_est)):
+
+        if(i == 0): # Take the first position estimation as the reference for the first fruit
+            position_est1.append(position_est[i])
+            continue
+        else:
+            coordinates = position_est[i]
+            x_distance = np.abs(coordinates[0] - position_est[0][0])
+            y_distance = np.abs(coordinates[1] - position_est[0][1])
+            distance = np.sqrt(x_distance ** 2 + y_distance ** 2)
+            if(distance < distance_threshold):
+                position_est1.append(coordinates)
+            else:
+                position_est2.append(coordinates)
+
+    # Merge position estimations
+    position1 = merge_to_mean(position_est1, remove_outlier)
+    position2 = merge_to_mean(position_est2, remove_outlier)
+
+    # return the position estimations
+    positions = []
+    if(position1 != None):
+        positions.append(position1)
+    if(position2 != None):
+        positions.append(position2)
+    return positions
+        
+
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
     target_map = target_pose_dict
@@ -124,16 +208,16 @@ def merge_estimations(target_pose_dict):
 
     ######### Replace with your codes #########
     # TODO: the operation below takes the first three estimations of each target type, replace it with a better merge solution
-    if len(apple_est) > 2:
-        apple_est = apple_est[0:2]
-    if len(lemon_est) > 2:
-        lemon_est = lemon_est[0:2]
-    if len(pear_est) > 2:
-        pear_est = pear_est[0:2]
-    if len(orange_est) > 2:
-        orange_est = orange_est[0:2]
-    if len(strawberry_est) > 2:
-        strawberry_est = strawberry_est[0:2]
+    if len(apple_est) > 1:
+        apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = False)
+    if len(lemon_est) > 1:
+        lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = False)
+    if len(pear_est) > 1:
+        pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = False)
+    if len(orange_est) > 1:
+        orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = False)
+    if len(strawberry_est) > 1:
+        strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = False)
 
     for i in range(2):
         try:
