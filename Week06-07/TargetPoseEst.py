@@ -29,13 +29,13 @@ def get_bounding_box(target_number, image_path):
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
-    # there are at most three types of targets in each image
-    target_lst_box = [[], [], []]
-    target_lst_pose = [[], [], []]
+    # there are at most five types of targets in each image
+    target_lst_box = [[], [], [], [], []]
+    target_lst_pose = [[], [], [], [], []]
     completed_img_dict = {}
 
     # add the bounding box info of each target in each image
-    # target labels: 1 = apple, 2 = lemon, 3 = person, 0 = not_a_target
+    # target labels: 1 = apple, 2 = lemon, 3 = pear, 4 = orange, 5 = strawberry, 0 = not_a_target
     img_vals = set(Image(base_dir / file_path, grey=True).image.reshape(-1))
     for target_num in img_vals:
         if target_num > 0:
@@ -48,7 +48,7 @@ def get_image_info(base_dir, file_path, image_poses):
                 pass
 
     # if there are more than one objects of the same type, combine them
-    for i in range(3):
+    for i in range(5):
         if len(target_lst_box[i])>0:
             box = np.stack(target_lst_box[i], axis=1)
             pose = np.stack(target_lst_pose[i], axis=1)
@@ -85,7 +85,17 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
-        target_pose = {'y': 0.0, 'x': 0.0}
+        depth = (focal_length/box[3][0]) * true_height
+        y_fruit = depth
+        x_fruit = (depth/focal_length) * box[1][0]
+        alpha = np.arctan(x_fruit/y_fruit)
+        dist_fruit = np.sqrt(x_fruit**2 + y_fruit**2)
+
+        psi = robot_pose[2][0] - alpha
+        x_loc = robot_pose[0][0] + dist_fruit * np.cos(phi)
+        y_loc = robot_pose[1][0] + dist_fruit * np.sin(phi)
+
+        target_pose = {'y': y_loc, 'x': x_loc}
         
         target_pose_dict[target_list[target_num-1]] = target_pose
         ###########################################
@@ -94,7 +104,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
-    target_pose_dict = target_pose_dict
+    target_map = target_pose_dict
     apple_est, lemon_est, pear_est, orange_est, strawberry_est = [], [], [], [], []
     target_est = {}
     
@@ -179,6 +189,4 @@ if __name__ == "__main__":
         json.dump(target_est, fo)
     
     print('Estimations saved!')
-
-
 
