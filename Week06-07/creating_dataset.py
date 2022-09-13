@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import os
 import random
-
+import string
 
 class Dataset():
     def __init__(self, fruit_path, bg_path, out_path):
@@ -55,7 +55,8 @@ class Dataset():
 
     def save_fruit_dataset(self):
         for i in range(len(self.fruit)):
-            cv2.imwrite(os.path.join(self.fruit_path, "fruit_dataset", f"{i}.png"), self.fruit[i])
+            # Now outputs not directly to the fruit path
+            cv2.imwrite(os.path.join(self.out_path, "fruit_dataset", f"{self.fruit_names[i//9][:-4].rstrip(string.digits)}{i}.png"), self.fruit[i])
 
     def paste_backgrounds(self):
         c = list(zip(self.fruit, self.fruit_names))
@@ -80,7 +81,7 @@ class Dataset():
                 y_offset = random.randint(0, background.shape[0]-fruit.shape[0])
                 x_offset = random.randint(0, background.shape[1]-fruit.shape[1])
                 background = self.overlay_img(background, fruit, y_offset, x_offset)
-                cls.append(self.cls_[self.fruit_names[fruit_idx+i][:-5]])
+                cls.append(self.cls_[self.fruit_names[fruit_idx+i][:-4].rstrip(string.digits)])
                 x_center.append((x_offset + fruit.shape[1] / 2) / background.shape[1])
                 y_center.append((y_offset + fruit.shape[0] / 2) / background.shape[0])
                 width.append(fruit.shape[1] / background.shape[1])
@@ -145,7 +146,7 @@ dataset.import_fruit()
 dataset.import_background()
 dataset.transform_fruit()
 dataset.save_fruit_dataset()
-dataset.paste_backgrounds()
+#dataset.paste_backgrounds()
 # print(len(dataset.fruit))
 # idx = random.randint(51, len(dataset.fruit))
 # print(dataset.fruit[idx])
