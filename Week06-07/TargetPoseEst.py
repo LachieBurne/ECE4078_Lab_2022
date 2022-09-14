@@ -92,7 +92,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         alpha = np.arctan(x_fruit/y_fruit)
         dist_fruit = np.sqrt(x_fruit**2 + y_fruit**2)
 
-        psi = robot_pose[2][0] - alpha
+        phi = robot_pose[2][0] - alpha
         x_loc = robot_pose[0][0] + dist_fruit * np.cos(phi)
         y_loc = robot_pose[1][0] + dist_fruit * np.sin(phi)
 
