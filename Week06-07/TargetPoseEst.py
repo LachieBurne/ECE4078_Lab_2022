@@ -45,7 +45,7 @@ def unpack_image(image):
 
     #confidence threshold.
 
-    if real_run = 0:
+    if real_run == 0:
         model.conf = 0.2
     else:
         model.conf = 0.65
@@ -92,6 +92,7 @@ def get_image_info(base_dir, file_path, image_poses):
 
     # add the bounding box info of each target in each image
     # target labels: 1 = apple, 2 = lemon, 3 = pear, 4 = orange, 5 = strawberry, 0 = not_a_target
+    
     img_file_path = os.path.join(base_dir, file_path)
     all_vals = unpack_image(img_file_path)
     for (target_num, box) in all_vals:
