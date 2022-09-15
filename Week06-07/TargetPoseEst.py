@@ -12,21 +12,72 @@ from machinevisiontoolbox import Image
 import matplotlib.pyplot as plt
 import PIL
 
-# use the machinevision toolbox to get the bounding box of the detected target(s) in an image
-def get_bounding_box(target_number, image_path):
-    image = PIL.Image.open(image_path).resize((640,480), PIL.Image.NEAREST)
-    target = Image(image)==target_number
-    blobs = target.blobs()
-    [[u1,u2],[v1,v2]] = blobs[0].bbox # bounding box
-    width = abs(u1-u2)
-    height = abs(v1-v2)
-    center = np.array(blobs[0].centroid).reshape(2,)
-    box = [center[0], center[1], int(width), int(height)] # box=[x,y,width,height]
-    # plt.imshow(fruit.image)
-    # plt.annotate(str(fruit_number), np.array(blobs[0].centroid).reshape(2,))
-    # plt.show()
-    # assert len(blobs) == 1, "An image should contain only one object of each target type"
-    return box
+from os import listdir
+import torch
+
+
+####################################################### James ###########################################################
+
+def get_YOLO_shit(fruit_select):
+
+    fruit_xmin = fruit_select[0]
+    fruit_ymin = fruit_select[1]
+    fruit_xmax = fruit_select[2]
+    fruit_ymax = fruit_select[3]
+    fruit_conf = fruit_select[4]
+    fruit_class = fruit_select[5]
+    fruit_name = fruit_select[6]
+
+    fruit_xcent = (fruit_xmin + fruit_xmax)/2
+    fruit_ycent = (fruit_ymin + fruit_ymax)/2
+    fruit_width = fruit_xmax - fruit_xmin
+    fruit_height = fruit_ymax - fruit_ymin
+
+    class_converter = {0:1,1:3,2:4,3:5,4:2}
+
+    return (class_converter[fruit_class], [fruit_xcent,fruit_ycent, fruit_width, fruit_height])
+
+#First loop is to go through the list of images and run yolo to find the fruit data.
+def unpack_image(image):
+
+    #confidence threshold.
+    model.conf = 0.65
+    result = model(image)
+    image_data = result.pandas().xyxy[0]
+    image_data_list = image_data.values.tolist()
+    #print(image_data_list)
+    #print(image_data)
+
+    YOLO_shits = []
+
+    for fruit_data in image_data_list:
+        YOLO_shits.append(get_YOLO_shit(fruit_data))
+
+    return YOLO_shits
+
+#Output is in the order 'xmin', 'ymin', 'xmax', ymax', 'confidence', 'class', 'name'
+#Probably best to call most of the rest of the file as a function in the second loop somewhere.
+
+
+####################################################### James ###########################################################
+
+
+# # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
+# def get_bounding_box(target_number, image_path):
+#     image = PIL.Image.open(image_path).resize((640,480), PIL.Image.NEAREST)
+#     target = Image(image)==target_number
+#     blobs = target.blobs()
+#     [[u1,u2],[v1,v2]] = blobs[0].bbox # bounding box
+#     width = abs(u1-u2)
+#     height = abs(v1-v2)
+#     center = np.array(blobs[0].centroid).reshape(2,)
+#     box = [center[0], center[1], int(width), int(height)] # box=[x,y,width,height]
+#     # plt.imshow(fruit.image)
+#     # plt.annotate(str(fruit_number), np.array(blobs[0].centroid).reshape(2,))
+#     # plt.show()
+#     # assert len(blobs) == 1, "An image should contain only one object of each target type"
+#     return box
+
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
@@ -246,6 +297,13 @@ def merge_estimations(target_pose_dict):
 
 
 if __name__ == "__main__":
+
+    weight_path = 'final_weights/best_sim.pt'
+    #Make sure the weight file corresponds to the test image.
+
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=weight_path, force_reload=True)
+    #Downloads from github once. We can make it do this locally if necessary.
+    
     # camera_matrix = np.ones((3,3))/2
     fileK = "{}intrinsic.txt".format('./calibration/param/')
     camera_matrix = np.loadtxt(fileK, delimiter=',')
