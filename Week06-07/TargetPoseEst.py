@@ -1,5 +1,4 @@
 # estimate the pose of a target object detected
-from turtle import position
 import numpy as np
 import json
 import os
@@ -13,10 +12,11 @@ import matplotlib.pyplot as plt
 import PIL
 
 from os import listdir
+
 import torch
 
+real_run = 0
 
-####################################################### James ###########################################################
 
 def get_YOLO_shit(fruit_select):
 
@@ -37,16 +37,22 @@ def get_YOLO_shit(fruit_select):
 
     return (class_converter[fruit_class], [fruit_xcent,fruit_ycent, fruit_width, fruit_height])
 
-#First loop is to go through the list of images and run yolo to find the fruit data.
 def unpack_image(image):
+    """
+    :param: image The file path to the image
+    :return: A list of tuples in the form of (fruit_class, bounding_box)
+    """
 
     #confidence threshold.
-    model.conf = 0.65
+
+    if real_run = 0:
+        model.conf = 0.2
+    else:
+        model.conf = 0.65
+
     result = model(image)
     image_data = result.pandas().xyxy[0]
     image_data_list = image_data.values.tolist()
-    #print(image_data_list)
-    #print(image_data)
 
     YOLO_shits = []
 
@@ -54,12 +60,6 @@ def unpack_image(image):
         YOLO_shits.append(get_YOLO_shit(fruit_data))
 
     return YOLO_shits
-
-#Output is in the order 'xmin', 'ymin', 'xmax', ymax', 'confidence', 'class', 'name'
-#Probably best to call most of the rest of the file as a function in the second loop somewhere.
-
-
-####################################################### James ###########################################################
 
 
 # # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
@@ -81,6 +81,10 @@ def unpack_image(image):
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
+    """
+    Output in the form of 
+
+    """
     # there are at most five types of targets in each image
     target_lst_box = [[], [], [], [], []]
     target_lst_pose = [[], [], [], [], []]
@@ -88,16 +92,12 @@ def get_image_info(base_dir, file_path, image_poses):
 
     # add the bounding box info of each target in each image
     # target labels: 1 = apple, 2 = lemon, 3 = pear, 4 = orange, 5 = strawberry, 0 = not_a_target
-    img_vals = set(Image(base_dir / file_path, grey=True).image.reshape(-1))
-    for target_num in img_vals:
-        if target_num > 0:
-            try:
-                box = get_bounding_box(target_num, base_dir/file_path) # [x,y,width,height]
-                pose = image_poses[file_path] # [x, y, theta]
-                target_lst_box[target_num-1].append(box) # bouncing box of target
-                target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose
-            except ZeroDivisionError:
-                pass
+    img_file_path = os.path.join(base_dir, file_path)
+    all_vals = unpack_image(img_file_path)
+    for (target_num, box) in all_vals:
+        pose = image_poses[file_path] # [x, y, theta] 
+        target_lst_box[target_num-1].append(box) # bounding box of target
+        target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose
 
     # if there are more than one objects of the same type, combine them
     for i in range(5):
@@ -115,16 +115,35 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     # actual sizes of targets [For the simulation models]
     # You need to replace these values for the real world objects
     target_dimensions = []
-    apple_dimensions = [0.075448, 0.074871, 0.071889]
-    target_dimensions.append(apple_dimensions)
-    lemon_dimensions = [0.060588, 0.059299, 0.053017]
-    target_dimensions.append(lemon_dimensions)
-    pear_dimensions = [0.0946, 0.0948, 0.135]
-    target_dimensions.append(pear_dimensions)
-    orange_dimensions = [0.0721, 0.0771, 0.0739]
-    target_dimensions.append(orange_dimensions)
-    strawberry_dimensions = [0.052, 0.0346, 0.0376]
-    target_dimensions.append(strawberry_dimensions)
+
+    if real_run == 0:
+        apple_dimensions = [0.075448, 0.074871, 0.071889]
+        target_dimensions.append(apple_dimensions)
+        lemon_dimensions = [0.060588, 0.059299, 0.053017]
+        target_dimensions.append(lemon_dimensions)
+        pear_dimensions = [0.0946, 0.0948, 0.135]
+        target_dimensions.append(pear_dimensions)
+        orange_dimensions = [0.0721, 0.0771, 0.0739]
+        target_dimensions.append(orange_dimensions)
+        strawberry_dimensions = [0.052, 0.0346, 0.0376]
+        target_dimensions.append(strawberry_dimensions)
+
+
+    else:  # width length height
+        apple_dimensions = [0.078, 0.078, 0.070]
+        target_dimensions.append(apple_dimensions)
+        lemon_dimensions = [0.0781, 0.0535, 0.050]
+        target_dimensions.append(lemon_dimensions)
+        pear_dimensions = [0.073, 0.080, 0.091]
+        target_dimensions.append(pear_dimensions)
+        orange_dimensions = [0.075, 0.075, 0.075]
+        target_dimensions.append(orange_dimensions)
+        strawberry_dimensions = [0.0412, 0.0410, 0.0382]
+        target_dimensions.append(strawberry_dimensions)
+
+
+
+#######Need to change dimensions for different runs
 
     target_list = ['apple', 'lemon', 'pear', 'orange', 'strawberry']
 
@@ -149,6 +168,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
 
         target_pose = {'y': y_loc, 'x': x_loc}
         
+        # {apple:{y:YPOS,x:XPOS}}
         target_pose_dict[target_list[target_num-1]] = target_pose
         ###########################################
     
@@ -230,9 +250,9 @@ def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outl
 
     # return the position estimations
     positions = []
-    if(position1 != None):
+    if(position1 is not None):
         positions.append(position1)
-    if(position2 != None):
+    if(position2 is not None):
         positions.append(position2)
     return positions
         
@@ -298,14 +318,23 @@ def merge_estimations(target_pose_dict):
 
 if __name__ == "__main__":
 
-    weight_path = 'final_weights/best_sim.pt'
+    weights_filename = 'best_real.pt' if real_run else 'best_sim.pt'
+    weight_path = f'final_weights/{weights_filename}'
+
     #Make sure the weight file corresponds to the test image.
 
     model = torch.hub.load('ultralytics/yolov5', 'custom', path=weight_path, force_reload=True)
     #Downloads from github once. We can make it do this locally if necessary.
     
+
+####   Intrinsic for real set. Sim for simulator.
+####
+
     # camera_matrix = np.ones((3,3))/2
-    fileK = "{}intrinsic.txt".format('./calibration/param/')
+    intrinsic_filename = 'intrinsic.txt' if real_run else 'intrinsic_sim.txt'
+    calibration_path = 'calibration/param/'
+    fileK = calibration_path + intrinsic_filename   
+
     camera_matrix = np.loadtxt(fileK, delimiter=',')
     base_dir = Path('./')
     
@@ -318,6 +347,7 @@ if __name__ == "__main__":
             image_poses[pose_dict['imgfname']] = pose_dict['pose']
     
     # estimate pose of targets in each detector output
+    # {image_0:{apple:{y:YPOS,x:XPOS}}}
     target_map = {}        
     for file_path in image_poses.keys():
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
@@ -331,4 +361,5 @@ if __name__ == "__main__":
         json.dump(target_est, fo)
     
     print('Estimations saved!')
+
 
