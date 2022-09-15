@@ -6,7 +6,6 @@ from pathlib import Path
 import ast
 # import cv2
 import math
-from machinevisiontoolbox import Image
 
 import matplotlib.pyplot as plt
 import PIL
@@ -15,7 +14,7 @@ from os import listdir
 
 import torch
 
-real_run = 0
+USING_SIM = True
 
 
 def get_YOLO_shit(fruit_select):
@@ -28,8 +27,13 @@ def get_YOLO_shit(fruit_select):
     fruit_class = fruit_select[5]
     fruit_name = fruit_select[6]
 
-    fruit_xcent = (fruit_xmin + fruit_xmax)/2
-    fruit_ycent = (fruit_ymin + fruit_ymax)/2
+    u_0 = 640/2 if USING_SIM else 320/2
+    v_0 = 480/2 if USING_SIM else 240/2
+   
+   
+   
+    fruit_xcent = (fruit_xmin + fruit_xmax)/2 - u_0
+    fruit_ycent = (fruit_ymin + fruit_ymax)/2 - v_0
     fruit_width = fruit_xmax - fruit_xmin
     fruit_height = fruit_ymax - fruit_ymin
 
@@ -45,7 +49,9 @@ def unpack_image(image):
 
     #confidence threshold.
 
-    if real_run == 0:
+    
+
+    if USING_SIM:
         model.conf = 0.2
     else:
         model.conf = 0.65
@@ -117,7 +123,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     # You need to replace these values for the real world objects
     target_dimensions = []
 
-    if real_run == 0:
+    if USING_SIM:
         apple_dimensions = [0.075448, 0.074871, 0.071889]
         target_dimensions.append(apple_dimensions)
         lemon_dimensions = [0.060588, 0.059299, 0.053017]
@@ -157,21 +163,37 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose
-        depth = (focal_length/box[3][0]) * true_height
-        y_fruit = depth
-        x_fruit = (depth/focal_length) * box[1][0]
-        alpha = np.arctan(x_fruit/y_fruit)
-        dist_fruit = np.sqrt(x_fruit**2 + y_fruit**2)
+        box = [x[0] for x in box]
+        robot_pose = [x[0] for x in robot_pose]
+        x_box, y_box, width_box, height_box = box
+        x_robot, y_robot, theta_robot = robot_pose
 
-        phi = robot_pose[2][0] - alpha
-        x_loc = robot_pose[0][0] + dist_fruit * np.cos(phi)
-        y_loc = robot_pose[1][0] + dist_fruit * np.sin(phi)
+        depth = (focal_length/height_box) * true_height
+        z_fruit = depth
+        x_fruit = (x_box/focal_length) * z_fruit
+        alpha = np.arctan(x_fruit/z_fruit)
+        dist_fruit = np.hypot(x_fruit,z_fruit)
+
+        phi = theta_robot - alpha
+        x_loc = x_robot + dist_fruit * np.cos(phi)
+        y_loc = y_robot + dist_fruit * np.sin(phi)
 
         target_pose = {'y': y_loc, 'x': x_loc}
         
         # {apple:{y:YPOS,x:XPOS}}
         target_pose_dict[target_list[target_num-1]] = target_pose
         ###########################################
+        print(f"fruit: {target_list[target_num-1]}")
+        
+        print(f"z_fruit: {z_fruit}")
+        print(f"x_fruit: {x_fruit}")
+        print(f"alpha: {alpha}")
+        print(f"x_box: {x_box}")
+        print(f"x_loc: {x_loc}")
+        print(f"y_loc: {y_loc}")
+        print('\n')
+
+
     
     return target_pose_dict
 
@@ -319,7 +341,7 @@ def merge_estimations(target_pose_dict):
 
 if __name__ == "__main__":
 
-    weights_filename = 'best_real.pt' if real_run else 'best_sim.pt'
+    weights_filename = 'best_sim.pt' if USING_SIM else 'best_real.pt'
     weight_path = f'final_weights/{weights_filename}'
 
     #Make sure the weight file corresponds to the test image.
@@ -332,7 +354,7 @@ if __name__ == "__main__":
 ####
 
     # camera_matrix = np.ones((3,3))/2
-    intrinsic_filename = 'intrinsic.txt' if real_run else 'intrinsic_sim.txt'
+    intrinsic_filename = 'intrinsic_sim.txt' if USING_SIM else 'intrinsic.txt'
     calibration_path = 'calibration/param/'
     fileK = calibration_path + intrinsic_filename   
 
@@ -352,6 +374,7 @@ if __name__ == "__main__":
     target_map = {}        
     for file_path in image_poses.keys():
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
+        print(f"image: {file_path}")
         target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
 
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
@@ -361,6 +384,6 @@ if __name__ == "__main__":
     with open(base_dir/'lab_output/targets.txt', 'w') as fo:
         json.dump(target_est, fo)
     
-    print('Estimations saved!')
+    print('Estimations saved :(')
 
 
