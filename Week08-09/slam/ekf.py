@@ -153,6 +153,7 @@ class EKF:
         return Q
 
     def add_landmarks(self, measurements):
+        print(measurements)
         if not measurements:
             return
 

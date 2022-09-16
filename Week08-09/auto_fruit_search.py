@@ -8,6 +8,9 @@ import json
 import argparse
 import time
 from operate import Operate
+from util.measure import Marker
+import pygame # python package for GUI
+
 
 
 print("the one pieeeeeeece")
@@ -159,9 +162,49 @@ if __name__ == "__main__":
     parser.add_argument("--port", metavar='', type=int, default=40000)
     parser.add_argument("--using_sim", action='store_true')
     ################# OPERATE.py ARGS ############################
+    # import argparse
+
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    # parser.add_argument("--port", metavar='', type=int, default=40000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
+    # parser.add_argument("--using_sim", action='store_true')
+    args, _ = parser.parse_known_args()
+    
+    pygame.font.init() 
+    TITLE_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 35)
+    TEXT_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 40)
+    
+    width, height = 700, 660
+    canvas = pygame.display.set_mode((width, height))
+    pygame.display.set_caption('ECE4078 2021 Lab')
+    pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
+    canvas.fill((0, 0, 0))
+    splash = pygame.image.load('pics/loading.png')
+    pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
+                     pygame.image.load('pics/8bit/pibot2.png'),
+                     pygame.image.load('pics/8bit/pibot3.png'),
+                    pygame.image.load('pics/8bit/pibot4.png'),
+                     pygame.image.load('pics/8bit/pibot5.png')]
+    pygame.display.update()
+
+    start = False
+
+    counter = 40
+    while not start:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                start = True
+        canvas.blit(splash, (0, 0))
+        x_ = min(counter, 600)
+        if x_ < 600:
+            canvas.blit(pibot_animate[counter%10//2], (x_, 565))
+            pygame.display.update()
+            counter += 2
+
+    operate = Operate(args)
     ################# OPERATE.py ARGS ############################
     
     args, _ = parser.parse_known_args()
@@ -176,9 +219,12 @@ if __name__ == "__main__":
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
 
-    operate = Operate(args) # from operate
-
-    operate.ekf.add_landmarks(aruco_true_pos)
+    print(f"fruit lsit: {fruits_list}")
+    measurements = []
+    for i, position in enumerate(aruco_true_pos):
+        measurements.append(Marker(position, tag=i))
+        
+    operate.ekf.add_landmarks(measurements)
 
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
@@ -189,9 +235,9 @@ if __name__ == "__main__":
         operate.update_slam(drive_meas)
         operate.record_data()
         operate.save_image()
-        # # visualise
-        # operate.draw(canvas)
-        # pygame.display.update()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
         ################# OPERATE.py CODE ############################
         # enter the waypoints
         # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
