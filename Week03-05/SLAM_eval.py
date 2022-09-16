@@ -5,8 +5,8 @@ import json
 
 def parse_groundtruth(fname : str) -> dict:
     with open(fname,'r') as f:
-        gt_dict = ast.literal_eval(f.readline())
-        
+        # gt_dict = ast.literal_eval(f.readline())
+        gt_dict = json.load(f)
         aruco_dict = {}
         for key in gt_dict:
             if key.startswith("aruco"):
