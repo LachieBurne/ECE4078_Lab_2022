@@ -6,7 +6,7 @@ import numpy as np
 import cv2 
 import os, sys
 import time
-
+print("si papi")
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
 from util.pibot import PenguinPi # access the robot

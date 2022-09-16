@@ -7,12 +7,19 @@ import numpy as np
 import json
 import argparse
 import time
+from operate import Operate
+
+
+print("the one pieeeeeeece")
+print("the one piece is reeaaaaal")
+print("can we get much higher (higher)")
+print("so hiiiiigh")
 
 # import SLAM components
-# sys.path.insert(0, "{}/slam".format(os.getcwd()))
-# from slam.ekf import EKF
-# from slam.robot import Robot
-# import slam.aruco_detector as aruco
+sys.path.insert(0, "{}/slam".format(os.getcwd()))
+from slam.ekf import EKF
+from slam.robot import Robot
+import slam.aruco_detector as aruco
 
 # import utility functions
 sys.path.insert(0, "util")
@@ -100,25 +107,30 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
 # try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
 def drive_to_point(waypoint, robot_pose):
     # imports camera / wheel calibration parameters 
-    fileS = "calibration/param/scale.txt"
+    fileS = "calibration/param/scale_sim.txt" if args.using_sim else "calibration/param/scale.txt"
     scale = np.loadtxt(fileS, delimiter=',')
-    fileB = "calibration/param/baseline.txt"
+    fileB = "calibration/param/baseline_sim.txt" if args.using_sim else "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
     
     ####################################################
     # TODO: replace with your codes to make the robot drive to the waypoint
     # One simple strategy is to first turn on the spot facing the waypoint,
     # then drive straight to the way point
-
     wheel_vel = 30 # tick
     
     # turn towards the waypoint
-    turn_time = 0.0 # replace with your calculation
+    x_diff = np.abs(robot_pose[0] - waypoint[0])
+    y_diff = np.abs(robot_pose[1] - waypoint[1])
+    distance = np.hypot(x_diff, y_diff)
+    distance -= 0.25 # don't want to collide with waypoint
+    phi = np.arctan(y_diff/x_diff)
+    angle_diff = phi - robot_pose[-1]
+    turn_time = (baseline*np.pi)/(wheel_vel*scale) * (angle_diff/360) # replace with your calculation
     print("Turning for {:.2f} seconds".format(turn_time))
     ppi.set_velocity([0, 1], turning_tick=wheel_vel, time=turn_time)
     
     # after turning, drive straight to the waypoint
-    drive_time = 0.0 # replace with your calculation
+    drive_time = (1.0/scale*wheel_vel) * (distance/1) # replace with your calculation
     print("Driving for {:.2f} seconds".format(drive_time))
     ppi.set_velocity([1, 0], tick=wheel_vel, time=drive_time)
     ####################################################
@@ -134,6 +146,8 @@ def get_robot_pose():
     # update the robot pose [x,y,theta]
     robot_pose = [0.0,0.0,0.0] # replace with your calculation
     ####################################################
+    
+      
 
     return robot_pose
 
@@ -143,6 +157,13 @@ if __name__ == "__main__":
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
+    parser.add_argument("--using_sim", action='store_true')
+    ################# OPERATE.py ARGS ############################
+    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+    parser.add_argument("--save_data", action='store_true')
+    parser.add_argument("--play_data", action='store_true')
+    ################# OPERATE.py ARGS ############################
+    
     args, _ = parser.parse_known_args()
 
     ppi = PenguinPi(args.ip,args.port)
@@ -155,10 +176,26 @@ if __name__ == "__main__":
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
 
+    operate = Operate(args) # from operate
+
+    operate.ekf.add_landmarks(aruco_true_pos)
+
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
+        ################# OPERATE.py CODE ############################
+        operate.update_keyboard()
+        operate.take_pic()
+        drive_meas = operate.control()
+        operate.update_slam(drive_meas)
+        operate.record_data()
+        operate.save_image()
+        # # visualise
+        # operate.draw(canvas)
+        # pygame.display.update()
+        ################# OPERATE.py CODE ############################
         # enter the waypoints
         # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
+      
         x,y = 0.0,0.0
         x = input("X coordinate of the waypoint: ")
         try:
@@ -174,7 +211,8 @@ if __name__ == "__main__":
             continue
 
         # estimate the robot's pose
-        robot_pose = get_robot_pose()
+        
+        robot_pose = operate.ekf.robot.state # get_robot_pose()
 
         # robot drives to the waypoint
         waypoint = [x,y]
