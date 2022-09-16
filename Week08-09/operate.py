@@ -70,7 +70,7 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
     # wheel control
-    def control(self):       
+    def control(self, args):       
         if args.play_data:
             lv, rv = self.pibot.set_velocity()            
         else:
@@ -314,7 +314,7 @@ if __name__ == "__main__":
     while start:
         operate.update_keyboard()
         operate.take_pic()
-        drive_meas = operate.control()
+        drive_meas = operate.control(args)
         operate.update_slam(drive_meas)
         operate.record_data()
         operate.save_image()
