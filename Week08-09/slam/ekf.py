@@ -153,7 +153,6 @@ class EKF:
         return Q
 
     def add_landmarks(self, measurements):
-        print(measurements)
         if not measurements:
             return
 
@@ -167,17 +166,17 @@ class EKF:
                 # ignore known tags
                 continue
             
-            lm_bff = lm.position
-            lm_inertial = robot_xy + R_theta @ lm_bff
+            # lm_bff = lm.position
+            # lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
+            self.markers = np.concatenate((self.markers, lm.position), axis=1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
             self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
-            self.P[-2,-2] = self.init_lm_cov**2
-            self.P[-1,-1] = self.init_lm_cov**2
+            self.P[-2,-2] = 1e-2
+            self.P[-1,-1] = 1e-2
 
     ##########################################
     ##########################################
