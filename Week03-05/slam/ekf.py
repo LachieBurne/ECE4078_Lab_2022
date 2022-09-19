@@ -288,6 +288,7 @@ class EKF:
 
     @staticmethod
     def make_ellipse(P):
+        print(P)
         e_vals, e_vecs = np.linalg.eig(P)
         idx = e_vals.argsort()[::-1]   
         e_vals = e_vals[idx]

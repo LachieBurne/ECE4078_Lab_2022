@@ -219,7 +219,7 @@ if __name__ == "__main__":
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
 
-    print(f"fruit lsit: {fruits_list}")
+    print(f"fruit list: {fruits_list}")
     measurements = []
     for i, position in enumerate(aruco_true_pos):
         measurements.append(Marker(position, tag=i))
