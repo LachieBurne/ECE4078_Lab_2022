@@ -137,7 +137,7 @@ def drive_to_point(waypoint, robot_pose):
     ppi.set_velocity([0, 1], turning_tick=wheel_vel, time=turn_time)
     
     # after turning, drive straight to the waypoint
-    drive_time = (1.0/scale*wheel_vel) * (distance) # replace with your calculation
+    drive_time = (1.0/(scale*wheel_vel)) * (distance) # replace with your calculation
     print(f"Driving for {drive_time} seconds")
     ppi.set_velocity([1, 0], tick=wheel_vel, time=drive_time)
     ####################################################
