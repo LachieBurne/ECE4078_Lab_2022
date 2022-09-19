@@ -293,8 +293,6 @@ class EKF:
         e_vecs = e_vecs[:, idx]
         alpha = np.sqrt(4.605)
         axes_len = e_vals*2*alpha
-        print(P)
-        print(e_vecs)
         if abs(e_vecs[1, 0]) > 1e-3:
             angle = np.arctan(e_vecs[0, 0]/e_vecs[1, 0])
         else:

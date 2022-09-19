@@ -122,6 +122,7 @@ def drive_to_point(waypoint, robot_pose):
     wheel_vel = 30 # tick
     
     # turn towards the waypoint
+    print(robot_pose)
     x_diff = np.abs(robot_pose[0] - waypoint[0])
     y_diff = np.abs(robot_pose[1] - waypoint[1])
     distance = np.hypot(x_diff, y_diff)
