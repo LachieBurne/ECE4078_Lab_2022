@@ -267,6 +267,8 @@ if __name__ == "__main__":
         # robot drives to the waypoint
         waypoint = [x,y]
         drive_to_point(waypoint,robot_pose)
+
+        robot_pose = operate.ekf.robot.state
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
         # exit
