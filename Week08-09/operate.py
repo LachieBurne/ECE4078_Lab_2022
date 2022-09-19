@@ -166,10 +166,10 @@ class Operate:
                                 )
 
         # canvas.blit(self.gui_mask, (0, 0))
-        self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad), TITLE_FONT) # M2
+        self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad), TITLE_FONT=TITLE_FONT) # M2
         self.put_caption(canvas, caption='Detector (M3)',
-                         position=(h_pad, 240+2*v_pad), TITLE_FONT) # M3
-        self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad), TITLE_FONT)
+                         position=(h_pad, 240+2*v_pad), TITLE_FONT=TITLE_FONT) # M3
+        self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad), TITLE_FONT=TITLE_FONT)
 
         notifiation = TEXT_FONT.render(self.notification,
                                           False, text_colour)
