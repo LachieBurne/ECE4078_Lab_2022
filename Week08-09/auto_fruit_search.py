@@ -231,7 +231,7 @@ if __name__ == "__main__":
         ################# OPERATE.py CODE ############################
         operate.update_keyboard()
         operate.take_pic()
-        drive_meas = operate.control()
+        drive_meas = operate.control(args)
         operate.update_slam(drive_meas)
         operate.record_data()
         operate.save_image()
