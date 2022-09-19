@@ -288,13 +288,13 @@ class EKF:
 
     @staticmethod
     def make_ellipse(P):
-        print(P)
         e_vals, e_vecs = np.linalg.eig(P)
         idx = e_vals.argsort()[::-1]   
         e_vals = e_vals[idx]
         e_vecs = e_vecs[:, idx]
         alpha = np.sqrt(4.605)
         axes_len = e_vals*2*alpha
+        print(e_vecs)
         if abs(e_vecs[1, 0]) > 1e-3:
             angle = np.arctan(e_vecs[0, 0]/e_vecs[1, 0])
         else:
