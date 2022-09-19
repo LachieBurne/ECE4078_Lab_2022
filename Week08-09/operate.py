@@ -150,7 +150,7 @@ class Operate:
             self.command['output'] = False
 
     # paint the GUI            
-    def draw(self, canvas):
+    def draw(self, canvas, TITLE_FONT, TEXT_FONT):
         canvas.blit(self.bg, (0, 0))
         text_colour = (220, 220, 220)
         v_pad = 40

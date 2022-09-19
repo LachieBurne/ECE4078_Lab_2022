@@ -236,7 +236,7 @@ if __name__ == "__main__":
         operate.record_data()
         operate.save_image()
         # visualise
-        operate.draw(canvas)
+        operate.draw(canvas, TITLE_FONT, TEXT_FONT)
         pygame.display.update()
         ################# OPERATE.py CODE ############################
         # enter the waypoints
