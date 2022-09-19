@@ -132,7 +132,7 @@ def drive_to_point(waypoint, robot_pose):
     phi = np.arctan(y_diff/x_diff)
     print(phi)
     angle_diff = phi - robot_pose[-1]
-    turn_time = (baseline*np.pi)/(wheel_vel*scale) * (angle_diff/360) # replace with your calculation
+    turn_time = ((baseline*np.pi)/(wheel_vel*scale)) * (angle_diff/360) # replace with your calculation
     print(f"Turning for {turn_time} seconds")
     ppi.set_velocity([0, 1], turning_tick=wheel_vel, time=turn_time)
     
