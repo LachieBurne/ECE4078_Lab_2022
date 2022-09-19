@@ -4,20 +4,15 @@ import json
 import os
 from pathlib import Path
 import ast
-# import cv2
-import math
-
-import matplotlib.pyplot as plt
-import PIL
-
 from os import listdir
 
 import torch
+from sklearn.cluster import KMeans
 
 USING_SIM = True
 
 
-def get_YOLO_shit(fruit_select):
+def get_YOLO_stuff(fruit_select):
 
     fruit_xmin = fruit_select[0]
     fruit_ymin = fruit_select[1]
@@ -49,7 +44,6 @@ def unpack_image(image):
 
     #confidence threshold.
 
-    
 
     if USING_SIM:
         model.conf = 0.2
@@ -60,12 +54,12 @@ def unpack_image(image):
     image_data = result.pandas().xyxy[0]
     image_data_list = image_data.values.tolist()
 
-    YOLO_shits = []
+    yolo_stuff = []
 
     for fruit_data in image_data_list:
-        YOLO_shits.append(get_YOLO_shit(fruit_data))
+        yolo_stuff.append(get_YOLO_stuff(fruit_data))
 
-    return YOLO_shits
+    return yolo_stuff
 
 
 # # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
@@ -162,7 +156,6 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         true_height = target_dimensions[target_num-1][2]
         
         ######### Replace with your codes #########
-        # TODO: compute pose of the target based on bounding box info and robot's pose
         box = [x[0] for x in box]
         robot_pose = [x[0] for x in robot_pose]
         x_box, y_box, width_box, height_box = box
@@ -183,17 +176,6 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         # {apple:{y:YPOS,x:XPOS}}
         target_pose_dict[target_list[target_num-1]] = target_pose
         ###########################################
-        print(f"fruit: {target_list[target_num-1]}")
-        
-        print(f"z_fruit: {z_fruit}")
-        print(f"x_fruit: {x_fruit}")
-        print(f"alpha: {alpha}")
-        print(f"x_box: {x_box}")
-        print(f"x_loc: {x_loc}")
-        print(f"y_loc: {y_loc}")
-        print('\n')
-
-
     
     return target_pose_dict
 
@@ -238,7 +220,7 @@ def merge_to_mean(position_est, remove_outlier = False):
     return new_mean
 
 
-def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False):
+def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False, use_Kmeans = False):
 
     # Inputs:
     # position_est : An numpy array of coordinates {position_est[estimation #][0 = x, 1 = y]}
@@ -251,21 +233,32 @@ def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outl
     position_est1 = []
     position_est2 = []
 
-    # Compute distance
+    # Sort data
     for i in range(len(position_est)):
 
-        if(i == 0): # Take the first position estimation as the reference for the first fruit
-            position_est1.append(position_est[i])
-            continue
-        else:
-            coordinates = position_est[i]
-            x_distance = np.abs(coordinates[0] - position_est[0][0])
-            y_distance = np.abs(coordinates[1] - position_est[0][1])
-            distance = np.sqrt(x_distance ** 2 + y_distance ** 2)
-            if(distance < distance_threshold):
-                position_est1.append(coordinates)
+        if(use_Kmeans):
+
+            kmeans = KMeans(n_clusters = 2)
+            kmeans.fit(position_est)
+            if(kmeans.labels_[i] == 0):
+                position_est1.append(position_est[i])
             else:
-                position_est2.append(coordinates)
+                position_est2.append(position_est[i])
+
+        else:
+
+            if(i == 0): # Take the first position estimation as the reference for the first fruit
+                position_est1.append(position_est[i])
+                continue
+            else:
+                coordinates = position_est[i]
+                x_distance = np.abs(coordinates[0] - position_est[0][0])
+                y_distance = np.abs(coordinates[1] - position_est[0][1])
+                distance = np.sqrt(x_distance ** 2 + y_distance ** 2)
+                if(distance < distance_threshold):
+                    position_est1.append(coordinates)
+                else:
+                    position_est2.append(coordinates)
 
     # Merge position estimations
     position1 = merge_to_mean(position_est1, remove_outlier)
@@ -302,16 +295,18 @@ def merge_estimations(target_pose_dict):
 
     ######### Replace with your codes #########
     # TODO: the operation below takes the first three estimations of each target type, replace it with a better merge solution
+    remove_outlier = False
+    use_Kmeans = False
     if len(apple_est) > 1:
-        apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = False)
+        apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
     if len(lemon_est) > 1:
-        lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = False)
+        lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
     if len(pear_est) > 1:
-        pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = False)
+        pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
     if len(orange_est) > 1:
-        orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = False)
+        orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
     if len(strawberry_est) > 1:
-        strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = False)
+        strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
 
     for i in range(2):
         try:
@@ -374,7 +369,6 @@ if __name__ == "__main__":
     target_map = {}        
     for file_path in image_poses.keys():
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
-        print(f"image: {file_path}")
         target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
 
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
@@ -384,6 +378,6 @@ if __name__ == "__main__":
     with open(base_dir/'lab_output/targets.txt', 'w') as fo:
         json.dump(target_est, fo)
     
-    print('Estimations saved :(')
+    print('Estimations saved :)')
 
 
