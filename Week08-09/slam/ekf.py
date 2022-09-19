@@ -166,9 +166,10 @@ class EKF:
                 # ignore known tags
                 continue
             
-            # lm_bff = lm.position
-            # lm_inertial = robot_xy + R_theta @ lm_bff
-
+            lm_bff = lm.position
+            lm_inertial = robot_xy + R_theta @ lm_bff
+            print(lm.position.shape)
+            print(lm_inertial.shape)
             self.taglist.append(int(lm.tag))
             self.markers = np.concatenate((self.markers, lm.position), axis=1)
 
