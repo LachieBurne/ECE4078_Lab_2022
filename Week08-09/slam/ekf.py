@@ -166,12 +166,10 @@ class EKF:
                 # ignore known tags
                 continue
             
-            lm_bff = lm.position[:, None]
-            lm_inertial = robot_xy + R_theta @ lm_bff
-            print(lm.position.shape)
-            print(lm_inertial.shape)
+             #lm_bff = lm.position[:, None]
+            # lm_inertial = robot_xy + R_theta @ lm_bff
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm.position), axis=1)
+            self.markers = np.concatenate((self.markers, lm.position[:, None]), axis=1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
