@@ -24,12 +24,12 @@ class EKF:
         self.init_lm_cov = 1e3
         self.robot_init_state = None
         self.lm_pics = []
-        for i in range(1, 11):
-            f_ = f'./pics/8bit/lm_{i}.png'
-            self.lm_pics.append(pygame.image.load(f_))
-        f_ = f'./pics/8bit/lm_unknown.png'
-        self.lm_pics.append(pygame.image.load(f_))
-        self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
+        # for i in range(1, 11):
+        #     f_ = f'./pics/8bit/lm_{i}.png'
+        #     self.lm_pics.append(pygame.image.load(f_))
+        # f_ = f'./pics/8bit/lm_unknown.png'
+        # self.lm_pics.append(pygame.image.load(f_))
+        # self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
         
     def reset(self):
         self.robot.state = np.zeros((3, 1))
@@ -166,17 +166,43 @@ class EKF:
                 # ignore known tags
                 continue
             
-            lm_bff = lm.position
-            lm_inertial = robot_xy + R_theta @ lm_bff
+            ## code not needed: it converts from the robot frame to world frame [M5 may need]
+            # lm_bff = lm.position
+            # lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
+            self.markers = np.concatenate((self.markers, lm.position[:, None]), axis=1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
             self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
-            self.P[-2,-2] = self.init_lm_cov**2
-            self.P[-1,-1] = self.init_lm_cov**2
+            self.P[-2,-2] = 1e-2 # self.init_lm_cov**2
+            self.P[-1,-1] = 1e-2 # self.init_lm_cov**2
+
+    def add_landmarks(self, measurements):
+        if not measurements:
+            return
+
+        th = self.robot.state[2]
+        robot_xy = self.robot.state[0:2,:]
+        R_theta = np.block([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
+
+        # Add new landmarks to the state
+        for lm in measurements:
+            if lm.tag in self.taglist:
+                # ignore known tags
+                continue
+            
+             #lm_bff = lm.position[:, None]
+            # lm_inertial = robot_xy + R_theta @ lm_bff
+            self.taglist.append(int(lm.tag))
+            self.markers = np.concatenate((self.markers, lm.position[:, None]), axis=1)
+
+            # Create a simple, large covariance to be fixed by the update step
+            self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
+            self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
+            self.P[-2,-2] = 1e-2
+            self.P[-1,-1] = 1e-2
 
     ##########################################
     ##########################################
