@@ -116,8 +116,8 @@ def drive_to_point(waypoint, robot_pose):
     x_diff = robot_pose[0] - waypoint[0]
     y_diff = robot_pose[1] - waypoint[1]
     distance_to_waypoint = np.hypot(x_diff, y_diff)
-    angle_to_waypoint = np.arctan2(y_diff, x_diff)
-    turning_angle = angle_to_waypoint.item() - robot_pose[-1].item()
+    angle_to_waypoint = np.arctan2(y_diff, x_diff).item()
+    turning_angle = angle_to_waypoint - robot_pose[-1].item()
     angular_velocity = 1 if turning_angle > 0 else -1
     
     # turn towards the waypoint
