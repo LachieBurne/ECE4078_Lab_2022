@@ -4,7 +4,7 @@
 - [Data collection (Week 6)](#step-1-data-collection)
 - [Training the NN (Week 6)](#step-2-training-your-neural-network)
 - [Estimating the target poses (Week 7)](#step-3-estimating-target-poses)
-
+- [Marking scheme](#marking-scheme)
 
 ## Introduction
 For milestone 3 you are required to detect and localise a list of target objects by training a target detector. In Week 6, you need to collect the training data and train your target detector with the helper scripts. In Week 7, you need to complete the codes to estimate the pose of the detected targets. 
@@ -84,7 +84,7 @@ python data_collector.py --dataset_name Synth --sample_per_class 1000
 ```
 This creates a folder in "catkin_ws/src/data_collector/dataset/" called "Synth", in which there is a folder for each target class containing 1000 synthetic training images generated with grey background in the images folder (if you check the Gazebo window while the data is being generated, you can see the models appearing at random locations for taking each of these images). The "images" folder saves the original image, while the "labels" folder saves the segmentation labels (silhouette of the target model) with small variation in the black level for training your neural network. The black level variation is amplified in "labels_readable" so that you can visualize what the labels look like if you want.
 
-![pear model with grey background](Screenshots/pear_grey.jpg?raw=true "Pear model with grey background")
+![Person model with grey background](Screenshots/pear_grey.jpg?raw=true "Person model with grey background")
 
 Now we need to replace the grey background with random background images to increase the detector's robustness. Open a terminal and run the following commands (note that we are using "python", not "python3")
 ```
@@ -93,7 +93,7 @@ python randomise_background.py --dataset_name Synth
 ``` 
 You should now see the images in "catkin_ws/src/data_collector/dataset/Synth" with random background pictures added to them. The background pictures are stored in "catkin_ws/src/data_collector/textures/random" and you can remove part of it or add your own collection.
 
-![Pear model with random background](Screenshots/pear_rand.jpg?raw=true "Pear model with random background")
+![Person model with random background](Screenshots/pear_rand.jpg?raw=true "Person model with random background")
 
 In the same terminal, after the background shuffling is done, run the dataset split script (note that we are using "python", not "python3"):
 ```
@@ -131,12 +131,12 @@ python3 main.py --dataset_dir ~/catkin_ws/src/data_collector/dataset --model_dir
 ```
 You can change the [default parameters](network/scripts/args.py) by adding flags, such as ```--lr 0.05```, when running [main.py](network/scripts/main.py). Parameters that you can change, what they represent and their default values are specified in [args.py](network/scripts/args.py).
 
-You will see some information printed regarding how a model performs for training and evalution during each epoch. Once training is done, a best performing model will be saved as "~/YourDir/Week05-06/network/scripts/model/model.best.pth". This model should be able to detect the different targets (red apple, yellow lemon, pear, orange, strawberry) and segment them from the background. Delete old checkpoints (.pth) before training new models.
+You will see some information printed regarding how a model performs for training and evalution during each epoch. Once training is done, a best performing model will be saved as "~/YourDir/Week05-06/network/scripts/model/model.best.pth". This model should be able to detect the different targets (apple, lemon, person) and segment them from the background. Delete old checkpoints (.pth) before training new models.
 
 If you would like to train your neural network on Google Colab, upload the [ECE4078_2022_Lab_M3_Colab folder](network/ECE4078_2022_Lab_M3_Colab) with your dataset included (images, labels, and the hdf5 files) to your Google Drive. Open [main_colab.ipynb](network/ECE4078_2022_Lab_M3_Colab/main_colab.ipynb) in Colab and then run its cells (you can change the default parameters in [args.py](network/ECE4078_2022_Lab_M3_Colab/args.py)). If you would like to use GPU or TPU with Colab, in the top menu, go to "Runtime" -> "Change runtime type" -> "Hardware accelerator" -> select "GPU" or "TPU" in the dropdown menu. After the training is done, you can view the performance of the trained network on 4 test images using [detector_debugger.ipynb](network/ECE4078_2022_Lab_M3_Colab/detector_debugger.ipynb), and you can download the generated best model "model.best.pth" to your local directory for the detector to use.
 
 ![Segmenting target from background](Screenshots/Prediction.jpg?raw=true "Segmenting target from background")
-Your network should segment the input image into one of six classes (background, apple, lemon, pear, orange and strawberry). Detecting humans will NOT be required this year.
+Your network should segment the input image into one of six classes (background, red apple, yellow lemon, pear, orange and strawberry). Detecting humans will NOT be required this year.
 
 Once you are happy with the model's performance, you can use it for your robot. Load the [Gazebo world](#Environment-variances) with environment textures and targets, and then in a terminal run 
 ```
@@ -157,3 +157,29 @@ You can use [CV_eval.py](CV_eval.py) to evaluate performance of your target pose
 python3 CV_eval.py TRUEMAP.txt lab_output/targets.txt
 ```
 This computes the Euclidean distance between each target and its closest estimation (the estimation error) and returns the average estimation error over all targets. If more than 3 estimations are given for a target type, the first 3 estimations will be used in the evaluation.
+
+## Marking scheme
+### Submission
+You need to submit the following:
+1. The completed [TargetPoseEst.py](TargetPoseEst.py)
+2. Trained neural network model(s), model weights, and the inference script (if independent of TargetPoseEst). Please DO NOT submit your training dataset or the script you used for training. If your model weights file is too big to upload to Moodle, please upload it to your Google Drive and provide a link to it in your README.txt.
+    - If you have trained two separate models for the simulation and the robot, please submit both models
+3. Submit a README.txt, include detailed step by step instructions on how to run your model (especially if you are using YOLO or other networks). Assuming that we are running your code/model on a new machine, clearly state the steps to install the dependencies and the steps required to run [TargetPoseEst.py](TargetPoseEst.py) and [CV_eval.py](CV_eval.py). You may get **ZERO** score if we are unable to reproduce these steps and get a score from the eval script. Please make sure you try out your own instructions before submitting it to Moodle
+
+Please zip all the required files ([TargetPoseEst.py](TargetPoseEst.py) and README.txt) and name it "M3_{team_number}.zip". For example, if you are team 3 from lab 3, your submission should be named "M3_303.zip".
+
+### Evaluation 
+Your trained model will be applied to a new marking map with a set of images taken at various points in the marking map for your detector to generate the predictions. The groundtruth robot poses associated with each image will be given for marking so the estimation performance will only depend on your neural network's performance and your pose estimation script. The resulting target pose estimation will be compared against the groundtruth map using [CV_eval.py](CV_eval.py) for evaluation.
+
+You will get 4pts for each type of fruit (red apple, yellow lemon, pear, orange, strawberry -> a total of 20pts) the robot can recognise. The estimation score is calculated using
+
+```
+estimation_score = (1 - avg_estimation_error)/(1-0.025) x 80 + NumberOfFruitTypeFound x 4
+```
+
+**Final score**
+```
+final_score = sim_estimation_score x 0.8 + robot_estimation_score x 0.2
+```
+
+Example test cases are provided in the [Example_Dataset](Example_Dataset/) folder. This folder contains the [TrueMap.txt](Example_Dataset/TrueMap.txt) and 21 testing images with the [true pose info](Example_Dataset/lab_output/images.txt) of the robot when each image was taken specified. After producing segmentation labels of each of the testing images with your trained neural network, your TargetPoseEst.py should be able to generate object pose predictions using these labels and the true robot poses associated with them. You can then use CV_eval.py to measure the performance of your estimation against the true map.
