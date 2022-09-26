@@ -121,12 +121,12 @@ def drive_to_point(waypoint, robot_pose):
     
     # turn towards the waypoint
     turn_time = (abs(turning_angle)*baseline) / (2 * scale * wheel_vel) # replace with your calculation
-    print("Turning for {:.2f} seconds".format(turn_time))
+    print(f"Turning for {np.round(turn_time,2)} seconds")
     ppi.set_velocity([0, angular_velocity], turning_tick=wheel_vel, time=turn_time)
 
     # after turning, drive straight to the waypoint
     drive_time = (1.0 / (scale * wheel_vel)) * distance_to_waypoint# replace with your calculation
-    print("Driving for {:.2f} seconds".format(drive_time))
+    print(f"Driving for {np.round(turn_time,2)} seconds")
     ppi.set_velocity([1, 0], tick=wheel_vel, time=drive_time)
     ####################################################
 
