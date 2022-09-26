@@ -124,12 +124,12 @@ def drive_to_point(waypoint, robot_pose):
     # turn towards the waypoint
     print(robot_pose)
     print(waypoint)
-    x_diff = np.abs(robot_pose[0] - waypoint[0])
-    y_diff = np.abs(robot_pose[1] - waypoint[1])
+    x_diff = robot_pose[0] - waypoint[0]
+    y_diff = robot_pose[1] - waypoint[1]
     distance = np.hypot(x_diff, y_diff)
     print(distance)
     distance -= 0.25 # don't want to collide with waypoint
-    phi = np.arctan(y_diff/x_diff)
+    phi = np.arctan2(y_diff/x_diff)
     print(phi)
     angle_diff = phi - robot_pose[-1]
     turn_time = ((baseline*angle_diff)/(2*wheel_vel*scale)) # replace with your calculation
