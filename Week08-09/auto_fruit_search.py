@@ -98,56 +98,85 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
 # additional improvements:
 # you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
 # try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
-def drive_to_point(waypoint, robot_pose):
+def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
     # imports camera / wheel calibration parameters 
-    fileS = "calibration/param/scale.txt"
-    scale = np.loadtxt(fileS, delimiter=',')
-    fileB = "calibration/param/baseline.txt"
-    baseline = np.loadtxt(fileB, delimiter=',')
+    if sim:
+        fileS = "calibration/param/scale_sim.txt"
+        scale = np.loadtxt(fileS, delimiter=',')
+        fileB = "calibration/param/baseline_sim.txt"
+        baseline = np.loadtxt(fileB, delimiter=',')
+    else:
+        fileS = "calibration/param/scale.txt"
+        scale = np.loadtxt(fileS, delimiter=',')
+        fileB = "calibration/param/baseline.txt"
+        baseline = np.loadtxt(fileB, delimiter=',')
     
     ####################################################
     # TODO: replace with your codes to make the robot drive to the waypoint
     # One simple strategy is to first turn on the spot facing the waypoint,
     # then drive straight to the way point
 
-    wheel_vel = 30 # tick
+    tick = 20 # tick
+    turning_tick = 5
 
     # Robot_pose is a 3*1 matrix
-    x_diff = robot_pose[0] - waypoint[0]
-    y_diff = robot_pose[1] - waypoint[1]
-    distance_to_waypoint = np.hypot(x_diff, y_diff).item()
-    angle_to_waypoint = np.arctan2(y_diff, x_diff).item()
-    turning_angle = angle_to_waypoint - robot_pose[-1].item()
+    x_diff = waypoint[0] - robot_pose[0]
+    y_diff = waypoint[1] - robot_pose[1]
+    x_diff, y_diff = x_diff, y_diff
+
+    distance_to_waypoint = np.hypot(x_diff, y_diff)
+    angle_to_waypoint = np.arctan2(y_diff, x_diff)
+    turning_angle = angle_to_waypoint - robot_pose[-1]
     angular_velocity = 1 if turning_angle > 0 else -1
-    
+
+    # print(f"x_diff: {x_diff}", f"y_diff: {y_diff}")
+    # print(f"distance_to_waypoint: {distance_to_waypoint}")
+    # print(f"angle_to_waypoint: {angle_to_waypoint}")
+    # print(f"turning_angle: {turning_angle}")
+
     # turn towards the waypoint
-    turn_time = (abs(turning_angle) * baseline) / (2 * scale * wheel_vel) # replace with your calculation
+    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # replace with your calculation
     print("Turning for {:.2f} seconds".format(turn_time))
-    ppi.set_velocity([0, angular_velocity], turning_tick=wheel_vel, time=turn_time)
+    command = [0, angular_velocity]
+
+    l_vel, r_vel = ppi.set_velocity(command, turning_tick=turning_tick, time=turn_time)
+
+    # Uses the right and left velocities to estimate the position of the robot with ekf.predict()
+    
+    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # get_robot_pose now takes l_vel, r_vel, control_clock for the predict step
 
     # after turning, drive straight to the waypoint
-    drive_time = (1.0 / (scale * wheel_vel)) * distance_to_waypoint # replace with your calculation
+    drive_time = (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
     print("Driving for {:.2f} seconds".format(drive_time))
-    ppi.set_velocity([1, 0], tick=wheel_vel, time=drive_time)
+    command = [1,0]
+    l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
+
     ####################################################
 
-    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
+    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1])) 
+    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # After finished driving, estimate pose again
+    return robot_pose, control_clock  
 
 
-def get_robot_pose():
+def get_robot_pose(l_vel, r_vel, control_clock):
     ####################################################
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
+    dt = time.time() - control_clock # Calculate dt as time between most recent predict and this predict
+    raw_drive_meas = measure.Drive(l_vel, r_vel, dt) # Obtain driving measurements
+    control_clock = time.time() # Update control_clock
 
+    ekf.predict(raw_drive_meas)
 
     lms, aruco_img = aruco_det.detect_marker_positions(ppi.get_image())
     ekf.update(lms)
 
     # update the robot pose [x,y,theta]
+
     robot_pose = ekf.robot.state # replace with your calculation
     ####################################################
 
-    return robot_pose
+    return robot_pose, control_clock
 
 # This is a way to initialise EKF
 def init_ekf(datadir, ip, sim=False):
@@ -206,6 +235,7 @@ if __name__ == "__main__":
     # Pass all these markers into the EKF
     ekf.add_landmarks(measurements) 
 
+    # Moved the original get_robot_pose() out of the while loop and hard coded it
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
 
@@ -227,13 +257,13 @@ if __name__ == "__main__":
             print("Please enter a number.")
             continue
 
-        # estimate the robot's pose
-        robot_pose = get_robot_pose()
+        # New variable used for the ekf.predict() function
+        control_clock = time.time()
 
         # robot drives to the waypoint
         waypoint = [x,y]
-        drive_to_point(waypoint,robot_pose)
-        robot_pose = get_robot_pose()
+        robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
+        
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
         # exit

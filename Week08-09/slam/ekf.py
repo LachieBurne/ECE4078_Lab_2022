@@ -108,7 +108,7 @@ class EKF:
         x = self.get_state_vector()
         
         # Construct measurement index list
-        tags = [lm.tag for lm in measurements]
+        tags = [lm.tag-1 for lm in measurements]
         idx_list = [self.taglist.index(tag) for tag in tags]
 
         # Stack measurements and set covariance
