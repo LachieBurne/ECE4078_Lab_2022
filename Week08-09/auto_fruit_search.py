@@ -16,8 +16,8 @@ import slam.aruco_detector as aruco
 
 # import utility functions
 sys.path.insert(0, "util")
-from pibot import PenguinPi
-import measure as measure
+from util.pibot import PenguinPi
+import util.measure as measure
 
 
 def read_true_map(fname):
@@ -105,12 +105,15 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
         scale = np.loadtxt(fileS, delimiter=',')
         fileB = "calibration/param/baseline_sim.txt"
         baseline = np.loadtxt(fileB, delimiter=',')
+        # scale /= 2
+        print(scale)
+        print(baseline)
     else:
         fileS = "calibration/param/scale.txt"
         scale = np.loadtxt(fileS, delimiter=',')
         fileB = "calibration/param/baseline.txt"
         baseline = np.loadtxt(fileB, delimiter=',')
-    
+
     ####################################################
     # TODO: replace with your codes to make the robot drive to the waypoint
     # One simple strategy is to first turn on the spot facing the waypoint,
@@ -130,12 +133,14 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
     angular_velocity = 1 if turning_angle > 0 else -1
 
     # print(f"x_diff: {x_diff}", f"y_diff: {y_diff}")
-    # print(f"distance_to_waypoint: {distance_to_waypoint}")
+    print(f"distance_to_waypoint: {distance_to_waypoint}")
     # print(f"angle_to_waypoint: {angle_to_waypoint}")
-    # print(f"turning_angle: {turning_angle}")
+    print(f"turning_angle: {turning_angle}")
 
     # turn towards the waypoint
     turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # replace with your calculation
+    print("scale: ", scale)
+    print("baseline: ", baseline)
     print("Turning for {:.2f} seconds".format(turn_time))
     command = [0, angular_velocity]
 
@@ -197,23 +202,29 @@ def init_ekf(datadir, ip, sim=False):
         dist_coeffs = np.loadtxt(fileD, delimiter=',')
         fileS = "{}scale_sim.txt".format(datadir)
         scale = np.loadtxt(fileS, delimiter=',')
-        if ip == 'localhost':
-            scale /= 2
+        # if ip == 'localhost':
+        #     scale /= 2
         fileB = "{}baseline_sim.txt".format(datadir)  
     baseline = np.loadtxt(fileB, delimiter=',')
+
+    print(scale)
+    print(baseline)
+
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     return EKF(robot)
 
 # main loop
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map.txt')
+    parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     # Adds the calibration directory arg (normally default)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--using_sim", action='store_true')
     args, _ = parser.parse_known_args()
+
+    print(args.using_sim)
 
     ppi = PenguinPi(args.ip,args.port)
 
