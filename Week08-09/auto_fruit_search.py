@@ -119,7 +119,7 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
     # One simple strategy is to first turn on the spot facing the waypoint,
     # then drive straight to the way point
 
-    tick = 20 # tick
+    tick = 20  # tick
     turning_tick = 5
 
     # Robot_pose is a 3*1 matrix
@@ -138,7 +138,7 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
     print(f"turning_angle: {turning_angle}")
 
     # turn towards the waypoint
-    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # replace with your calculation
+    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick)  # replace with your calculation
     print("scale: ", scale)
     print("baseline: ", baseline)
     print("Turning for {:.2f} seconds".format(turn_time))
@@ -147,29 +147,31 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
     l_vel, r_vel = ppi.set_velocity(command, turning_tick=turning_tick, time=turn_time)
 
     # Uses the right and left velocities to estimate the position of the robot with ekf.predict()
-    
-    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # get_robot_pose now takes l_vel, r_vel, control_clock for the predict step
+
+    robot_pose, control_clock = get_robot_pose(l_vel, r_vel,
+                                               control_clock)  # get_robot_pose now takes l_vel, r_vel, control_clock for the predict step
 
     # after turning, drive straight to the waypoint
-    drive_time = (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
+    drive_time = (1.0 / (scale * tick)) * distance_to_waypoint  # replace with your calculation
     print("Driving for {:.2f} seconds".format(drive_time))
-    command = [1,0]
+    command = [1, 0]
     l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
 
     ####################################################
 
-    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1])) 
-    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # After finished driving, estimate pose again
-    return robot_pose, control_clock  
+    print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
+    robot_pose, control_clock = get_robot_pose(l_vel, r_vel,
+                                               control_clock)  # After finished driving, estimate pose again
+    return robot_pose, control_clock
 
 
 def get_robot_pose(l_vel, r_vel, control_clock):
     ####################################################
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
-    dt = time.time() - control_clock # Calculate dt as time between most recent predict and this predict
-    raw_drive_meas = measure.Drive(l_vel, r_vel, dt) # Obtain driving measurements
-    control_clock = time.time() # Update control_clock
+    dt = time.time() - control_clock  # Calculate dt as time between most recent predict and this predict
+    raw_drive_meas = measure.Drive(l_vel, r_vel, dt)  # Obtain driving measurements
+    control_clock = time.time()  # Update control_clock
 
     ekf.predict(raw_drive_meas)
 
@@ -178,10 +180,11 @@ def get_robot_pose(l_vel, r_vel, control_clock):
 
     # update the robot pose [x,y,theta]
 
-    robot_pose = ekf.robot.state # replace with your calculation
+    robot_pose = ekf.robot.state  # replace with your calculation
     ####################################################
 
     return robot_pose, control_clock
+
 
 # This is a way to initialise EKF
 def init_ekf(datadir, ip, sim=False):
@@ -194,7 +197,7 @@ def init_ekf(datadir, ip, sim=False):
         scale = np.loadtxt(fileS, delimiter=',')
         if ip == 'localhost':
             scale /= 2
-        fileB = "{}baseline.txt".format(datadir)  
+        fileB = "{}baseline.txt".format(datadir)
     else:
         fileK = "{}intrinsic_sim.txt".format(datadir)
         camera_matrix = np.loadtxt(fileK, delimiter=',')
@@ -204,7 +207,7 @@ def init_ekf(datadir, ip, sim=False):
         scale = np.loadtxt(fileS, delimiter=',')
         # if ip == 'localhost':
         #     scale /= 2
-        fileB = "{}baseline_sim.txt".format(datadir)  
+        fileB = "{}baseline_sim.txt".format(datadir)
     baseline = np.loadtxt(fileB, delimiter=',')
 
     print(scale)
@@ -212,6 +215,44 @@ def init_ekf(datadir, ip, sim=False):
 
     robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
     return EKF(robot)
+
+
+def get_occupancy_map(fruit_true_pos, aruco_true_pos):
+    # Have a 400x400 image representing the map, black being free, white being obstacle
+    fruit_safety_radius = 30  # How far away in cm
+    aruco_safety_radius = 30
+    map = np.zeros((400, 400, 3), np.uint8)
+
+    for fruit_pos in fruit_true_pos:
+        x = int((fruit_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
+        y = int((fruit_pos[1] + 2) * 100)
+        c1 = (int(x - fruit_safety_radius / 2), int(y - fruit_safety_radius / 2))
+        c2 = (int(x + fruit_safety_radius / 2), int(y + fruit_safety_radius / 2))
+        map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+
+    for aruco_pos in aruco_true_pos:
+        x = int((aruco_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
+        y = int((aruco_pos[1] + 2) * 100)
+        c1 = (int(x - aruco_safety_radius / 2), int(y - aruco_safety_radius / 2))
+        c2 = (int(x + aruco_safety_radius / 2), int(y + aruco_safety_radius / 2))
+        map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+
+    return map
+
+def add_to_occupancy_map(new_point, map):
+    """
+    Adds a point to the occupancy map
+    :param new_point: A point in the form of [x,y]
+    :param map: The occupancy map
+    :return: The updated occupancy map
+    """
+    default_safety_radius = 30
+    x = int((new_point[0] + 2) * 100)  # Convert from central coords to left corner coords
+    y = int((new_point[1] + 2) * 100)
+    c1 = (int(x - default_safety_radius / 2), int(y - default_safety_radius / 2))
+    c2 = (int(x + default_safety_radius / 2), int(y + default_safety_radius / 2))
+    map = cv2.rectangle(map, c1, c2, (255, 255, 255), -1)
+    return map
 
 # main loop
 if __name__ == "__main__":
@@ -232,6 +273,9 @@ if __name__ == "__main__":
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
     search_list = read_search_list()
     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+
+    # Gets the occupancy map
+    map = get_occupancy_map(fruits_true_pos,aruco_true_pos)
 
     # TODO: Summon EKF into existence 
     ekf = init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
@@ -282,4 +326,3 @@ if __name__ == "__main__":
         uInput = input("Add a new waypoint? [Y/N]")
         if uInput == 'N':
             break
-
