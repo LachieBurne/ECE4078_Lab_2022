@@ -7,6 +7,8 @@ import numpy as np
 import json
 import argparse
 import time
+from RRT_Support.RRT import *
+from RRT_Support.Obstacle import *
 
 # import SLAM components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
