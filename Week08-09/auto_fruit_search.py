@@ -284,7 +284,7 @@ if __name__ == "__main__":
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map_5fruits.txt")
     map = get_occupancy_map(fruits_true_pos,aruco_true_pos)
     obstacles = get_obstacles(fruits_true_pos,aruco_true_pos)
-    rrt = RRTC([10,10],[290,290],obstacles,300,300,5,0.01,5000)
+    rrt = RRTC([10,10],[290,290],obstacles,300,300,5,0.1,5000)
     path = rrt.planning()
     add_path_to_map(path,map)
     cv2.waitKey()
