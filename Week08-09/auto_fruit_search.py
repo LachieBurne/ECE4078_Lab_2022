@@ -220,111 +220,140 @@ def init_ekf(datadir, ip, sim=False):
 
 
 def get_occupancy_map(fruit_true_pos, aruco_true_pos):
-    # Have a 400x400 image representing the map, black being free, white being obstacle
-    fruit_safety_radius = 30  # How far away in cm
-    aruco_safety_radius = 30
-    map = np.zeros((400, 400, 3), np.uint8)
+    # Have a 300x300 image representing the map, black being free, white being obstacle
+    fruit_safety_radius = 20  # How far away in cm
+    aruco_safety_radius = 20
+    map = np.zeros((300, 300, 3), np.uint8)
 
     for fruit_pos in fruit_true_pos:
         x = int((fruit_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
         y = int((fruit_pos[1] + 2) * 100)
-        c1 = (int(x - fruit_safety_radius / 2), int(y - fruit_safety_radius / 2))
-        c2 = (int(x + fruit_safety_radius / 2), int(y + fruit_safety_radius / 2))
-        map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+        # c1 = (int(x - fruit_safety_radius / 2), int(y - fruit_safety_radius / 2))
+        # c2 = (int(x + fruit_safety_radius / 2), int(y + fruit_safety_radius / 2))
+        # map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+        map = cv2.circle(map, (x, y), fruit_safety_radius, (255, 255, 255), -1)
 
     for aruco_pos in aruco_true_pos:
         x = int((aruco_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
         y = int((aruco_pos[1] + 2) * 100)
-        c1 = (int(x - aruco_safety_radius / 2), int(y - aruco_safety_radius / 2))
-        c2 = (int(x + aruco_safety_radius / 2), int(y + aruco_safety_radius / 2))
-        map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+        # c1 = (int(x - aruco_safety_radius / 2), int(y - aruco_safety_radius / 2))
+        # c2 = (int(x + aruco_safety_radius / 2), int(y + aruco_safety_radius / 2))
+        # map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
+        map = cv2.circle(map, (x, y), aruco_safety_radius, (255, 255, 255), -1)
 
     return map
 
-def add_to_occupancy_map(new_point, map):
+def add_to_occupancy_map(new_point, map_in):
     """
     Adds a point to the occupancy map
     :param new_point: A point in the form of [x,y]
     :param map: The occupancy map
     :return: The updated occupancy map
     """
-    default_safety_radius = 30
+    default_safety_radius = 20
     x = int((new_point[0] + 2) * 100)  # Convert from central coords to left corner coords
     y = int((new_point[1] + 2) * 100)
     c1 = (int(x - default_safety_radius / 2), int(y - default_safety_radius / 2))
     c2 = (int(x + default_safety_radius / 2), int(y + default_safety_radius / 2))
-    map = cv2.rectangle(map, c1, c2, (255, 255, 255), -1)
-    return map
+    map_in = cv2.rectangle(map_in, c1, c2, (255, 255, 255), -1)
+    return map_in
+
+def add_path_to_map(path, map_in):
+    img = map_in
+    for i in range(len(path)-1):
+        s1 = (round(path[i][0]),round(path[i][1]))
+        s2 = (round(path[i+1][0]),round(path[i+1][1]))
+        img = cv2.line(img,s1,s2,(255,0,0),2)
+    cv2.imshow('',img)
+    cv2.waitKey()
+
+def get_obstacles(fruit_true_pos, aruco_true_pos):
+    obstacles = []
+    fruit_safety = 20
+    aruco_safety = 30
+    for fruit in fruit_true_pos:
+        # obstacles.append(Rectangle((fruit[0],fruit[1]),fruit_safety,fruit_safety))
+        obstacles.append(Circle(fruit[0]*100+150,fruit[1]*100+150,fruit_safety))
+    for arucos in fruit_true_pos:
+        # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
+        obstacles.append(Circle(arucos[0]*100+150, arucos[1]*100+150, aruco_safety))
+    return obstacles
 
 # main loop
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
-    parser.add_argument("--port", metavar='', type=int, default=40000)
-    # Adds the calibration directory arg (normally default)
-    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
-    parser.add_argument("--using_sim", action='store_true')
-    args, _ = parser.parse_known_args()
-
-    print(args.using_sim)
-
-    ppi = PenguinPi(args.ip,args.port)
-
-    # read in the true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-    search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
-
-    # Gets the occupancy map
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map_5fruits.txt")
     map = get_occupancy_map(fruits_true_pos,aruco_true_pos)
-
-    # TODO: Summon EKF into existence 
-    ekf = init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
-    aruco_det = aruco.aruco_detector(
-        ekf.robot, marker_length = 0.07) # size of the ARUCO markers
-
-    # Gets the true measurments from the true map and convert to markers
-    # NOTE: This will not work for future milestones
-    measurements = []
-    for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i))
-    # Pass all these markers into the EKF
-    ekf.add_landmarks(measurements) 
-
-    # Moved the original get_robot_pose() out of the while loop and hard coded it
-    waypoint = [0.0,0.0]
-    robot_pose = [0.0,0.0,0.0]
-
-    # The following code is only a skeleton code the semi-auto fruit searching task
-    while True:
-        # enter the waypoints
-        # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
-        x,y = 0.0,0.0
-        x = input("X coordinate of the waypoint: ")
-        try:
-            x = float(x)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        y = input("Y coordinate of the waypoint: ")
-        try:
-            y = float(y)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-
-        # New variable used for the ekf.predict() function
-        control_clock = time.time()
-
-        # robot drives to the waypoint
-        waypoint = [x,y]
-        robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
-        
-        print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
-
-        # exit
-        ppi.set_velocity([0, 0])
-        uInput = input("Add a new waypoint? [Y/N]")
-        if uInput == 'N':
-            break
+    obstacles = get_obstacles(fruits_true_pos,aruco_true_pos)
+    rrt = RRTC([10,10],[290,290],obstacles,300,300,5,0.01,5000)
+    path = rrt.planning()
+    add_path_to_map(path,map)
+    cv2.waitKey()
+    # parser = argparse.ArgumentParser("Fruit searching")
+    # parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
+    # parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    # parser.add_argument("--port", metavar='', type=int, default=40000)
+    # # Adds the calibration directory arg (normally default)
+    # parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+    # parser.add_argument("--using_sim", action='store_true')
+    # args, _ = parser.parse_known_args()
+    #
+    # print(args.using_sim)
+    #
+    # ppi = PenguinPi(args.ip,args.port)
+    #
+    # # read in the true map
+    # fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+    # search_list = read_search_list()
+    # print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    #
+    # # Gets the occupancy map
+    # map = get_occupancy_map(fruits_true_pos,aruco_true_pos)
+    #
+    # ekf = init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
+    # aruco_det = aruco.aruco_detector(
+    #     ekf.robot, marker_length = 0.07) # size of the ARUCO markers
+    #
+    # # Gets the true measurments from the true map and convert to markers
+    # # NOTE: This will not work for future milestones
+    # measurements = []
+    # for i, position in enumerate(aruco_true_pos):
+    #     measurements.append(measure.Marker(position, tag=i))
+    # # Pass all these markers into the EKF
+    # ekf.add_landmarks(measurements)
+    #
+    # # Moved the original get_robot_pose() out of the while loop and hard coded it
+    # waypoint = [0.0,0.0]
+    # robot_pose = [0.0,0.0,0.0]
+    #
+    # # The following code is only a skeleton code the semi-auto fruit searching task
+    # while True:
+    #     # enter the waypoints
+    #     # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
+    #     x,y = 0.0,0.0
+    #     x = input("X coordinate of the waypoint: ")
+    #     try:
+    #         x = float(x)
+    #     except ValueError:
+    #         print("Please enter a number.")
+    #         continue
+    #     y = input("Y coordinate of the waypoint: ")
+    #     try:
+    #         y = float(y)
+    #     except ValueError:
+    #         print("Please enter a number.")
+    #         continue
+    #
+    #     # New variable used for the ekf.predict() function
+    #     control_clock = time.time()
+    #
+    #     # robot drives to the waypoint
+    #     waypoint = [x,y]
+    #     robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
+    #
+    #     print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
+    #
+    #     # exit
+    #     ppi.set_velocity([0, 0])
+    #     uInput = input("Add a new waypoint? [Y/N]")
+    #     if uInput == 'N':
+    #         break
