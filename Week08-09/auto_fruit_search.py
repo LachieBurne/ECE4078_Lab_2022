@@ -226,20 +226,20 @@ def get_occupancy_map(fruit_true_pos, aruco_true_pos):
     map = np.zeros((300, 300, 3), np.uint8)
 
     for fruit_pos in fruit_true_pos:
-        x = int((fruit_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
-        y = int((fruit_pos[1] + 2) * 100)
+        x = round((fruit_pos[0] + 1.5) * 100)  # Convert from central coords to left corner coords
+        y = round((fruit_pos[1] + 1.5) * 100)
         # c1 = (int(x - fruit_safety_radius / 2), int(y - fruit_safety_radius / 2))
         # c2 = (int(x + fruit_safety_radius / 2), int(y + fruit_safety_radius / 2))
         # map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
-        map = cv2.circle(map, (x, y), fruit_safety_radius, (255, 255, 255), -1)
+        map = cv2.circle(map, (x, y), fruit_safety_radius, (0, 255, 0), -1)
 
     for aruco_pos in aruco_true_pos:
-        x = int((aruco_pos[0] + 2) * 100)  # Convert from central coords to left corner coords
-        y = int((aruco_pos[1] + 2) * 100)
+        x = round((aruco_pos[0] + 1.5) * 100)  # Convert from central coords to left corner coords
+        y = round((aruco_pos[1] + 1.5) * 100)
         # c1 = (int(x - aruco_safety_radius / 2), int(y - aruco_safety_radius / 2))
         # c2 = (int(x + aruco_safety_radius / 2), int(y + aruco_safety_radius / 2))
         # map = cv2.rectangle(map, c1, c2, (255,255,255),-1)
-        map = cv2.circle(map, (x, y), aruco_safety_radius, (255, 255, 255), -1)
+        map = cv2.circle(map, (x, y), aruco_safety_radius, (0, 0, 255), -1)
 
     return map
 
@@ -270,11 +270,11 @@ def add_path_to_map(path, map_in):
 def get_obstacles(fruit_true_pos, aruco_true_pos):
     obstacles = []
     fruit_safety = 20
-    aruco_safety = 30
+    aruco_safety = 20
     for fruit in fruit_true_pos:
         # obstacles.append(Rectangle((fruit[0],fruit[1]),fruit_safety,fruit_safety))
         obstacles.append(Circle(fruit[0]*100+150,fruit[1]*100+150,fruit_safety))
-    for arucos in fruit_true_pos:
+    for arucos in aruco_true_pos:
         # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
         obstacles.append(Circle(arucos[0]*100+150, arucos[1]*100+150, aruco_safety))
     return obstacles
@@ -284,10 +284,9 @@ if __name__ == "__main__":
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map_5fruits.txt")
     map = get_occupancy_map(fruits_true_pos,aruco_true_pos)
     obstacles = get_obstacles(fruits_true_pos,aruco_true_pos)
-    rrt = RRTC([10,10],[290,290],obstacles,300,300,5,0.1,5000)
+    rrt = RRTC([10,10],[290,290],obstacles,300,300,5,0.1,500)
     path = rrt.planning()
     add_path_to_map(path,map)
-    cv2.waitKey()
     # parser = argparse.ArgumentParser("Fruit searching")
     # parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
     # parser.add_argument("--ip", metavar='', type=str, default='localhost')
