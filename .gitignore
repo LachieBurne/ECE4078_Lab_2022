@@ -130,3 +130,4 @@ dmypy.json
 
 /Week06-07/data/final/dataset/*.txt
 /Week06-07/data/final/photo/*.png
+/.vscode/

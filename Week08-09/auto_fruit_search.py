@@ -1,12 +1,17 @@
 # M4 - Autonomous fruit searching
 
 # basic python packages
+from email.mime import image
+from lib2to3.pgen2 import driver
 import sys, os
 import cv2
 import numpy as np
 import json
 import argparse
 import time
+import matplotlib
+import matplotlib.pyplot as plt
+import pygame
 
 # import SLAM components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
@@ -16,8 +21,10 @@ import slam.aruco_detector as aruco
 
 # import utility functions
 sys.path.insert(0, "util")
-from pibot import PenguinPi
-import measure as measure
+from util.pibot import PenguinPi
+import util.measure as measure
+import util.DatasetHandler as dh
+from util.operate import Operate
 
 
 def read_true_map(fname):
@@ -46,8 +53,8 @@ def read_true_map(fname):
                     aruco_true_pos[9][1] = y
                 else:
                     marker_id = int(key[5])
-                    aruco_true_pos[marker_id][0] = x
-                    aruco_true_pos[marker_id][1] = y
+                    aruco_true_pos[marker_id-1][0] = x
+                    aruco_true_pos[marker_id-1][1] = y
             else:
                 fruit_list.append(key[:-2])
                 if len(fruit_true_pos) == 0:
@@ -98,7 +105,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
 # additional improvements:
 # you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
 # try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
-def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
+def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
     # imports camera / wheel calibration parameters 
     if sim:
         fileS = "calibration/param/scale_sim.txt"
@@ -126,57 +133,66 @@ def drive_to_point(waypoint, robot_pose, control_clock, sim=False):
 
     distance_to_waypoint = np.hypot(x_diff, y_diff)
     angle_to_waypoint = np.arctan2(y_diff, x_diff)
+    print(f"[drive_to_point][angle_to_waypoint] {angle_to_waypoint}")
     turning_angle = angle_to_waypoint - robot_pose[-1]
     angular_velocity = 1 if turning_angle > 0 else -1
 
-    # print(f"x_diff: {x_diff}", f"y_diff: {y_diff}")
-    # print(f"distance_to_waypoint: {distance_to_waypoint}")
-    # print(f"angle_to_waypoint: {angle_to_waypoint}")
-    # print(f"turning_angle: {turning_angle}")
-
     # turn towards the waypoint
-    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # replace with your calculation
+    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick)# replace with your calculation
     print("Turning for {:.2f} seconds".format(turn_time))
-    command = [0, angular_velocity]
+    operate.command['motion'] = [0, angular_velocity*2]
+    done = False
+    then = time.time()
+    while not done:
+        robot_pose = get_robot_pose(operate)
+        if operate.control_clock - then > turn_time:
+            done = True
 
-    l_vel, r_vel = ppi.set_velocity(command, turning_tick=turning_tick, time=turn_time)
+    # l_vel, r_vel = ppi.set_velocity(command, turning_tick=turning_tick, time=turn_time)
 
     # Uses the right and left velocities to estimate the position of the robot with ekf.predict()
     
-    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # get_robot_pose now takes l_vel, r_vel, control_clock for the predict step
-
+    # print(f"Rotated pose: {robot_pose}") 
     # after turning, drive straight to the waypoint
     drive_time = (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
     print("Driving for {:.2f} seconds".format(drive_time))
-    command = [1,0]
-    l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
+    operate.command['motion'] = [2, 0]
+    done = False
+    then = time.time()
+    while not done:
+        robot_pose = get_robot_pose(operate)
+        if operate.control_clock - then > drive_time:
+            done = True
+
+    # l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
 
     ####################################################
 
     print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1])) 
-    robot_pose, control_clock = get_robot_pose(l_vel, r_vel, control_clock) # After finished driving, estimate pose again
-    return robot_pose, control_clock  
+    print(f"Translated pose: {robot_pose}") 
+    return robot_pose.T[0]  
 
 
-def get_robot_pose(l_vel, r_vel, control_clock):
+def get_robot_pose(operate:Operate):
     ####################################################
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
-    dt = time.time() - control_clock # Calculate dt as time between most recent predict and this predict
-    raw_drive_meas = measure.Drive(l_vel, r_vel, dt) # Obtain driving measurements
-    control_clock = time.time() # Update control_clock
-
-    ekf.predict(raw_drive_meas)
-
-    lms, aruco_img = aruco_det.detect_marker_positions(ppi.get_image())
-    ekf.update(lms)
+    operate.take_pic()
+    drive_meas = operate.control()
+    operate.update_slam(drive_meas)
+    operate.record_data()
+    operate.save_image()
+    operate.detect_target()
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
 
     # update the robot pose [x,y,theta]
 
-    robot_pose = ekf.robot.state # replace with your calculation
+    robot_pose = operate.ekf.robot.state # replace with your calculation
     ####################################################
 
-    return robot_pose, control_clock
+    return robot_pose
 
 # This is a way to initialise EKF
 def init_ekf(datadir, ip, sim=False):
@@ -213,7 +229,13 @@ if __name__ == "__main__":
     # Adds the calibration directory arg (normally default)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--using_sim", action='store_true')
+    # from operate
+    parser.add_argument("--save_data", action='store_true')
+    parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
     args, _ = parser.parse_known_args()
+
+    print(f"Using simulator = {args.using_sim}")
 
     ppi = PenguinPi(args.ip,args.port)
 
@@ -231,14 +253,54 @@ if __name__ == "__main__":
     # NOTE: This will not work for future milestones
     measurements = []
     for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i))
+        measurements.append(measure.Marker(position, tag=i+1))
+        print(f"{i}, {position}")
     # Pass all these markers into the EKF
+    print(f"[__main__][measurement.tags]\n{list(map(lambda x: x.tag, measurements))}\n")
+    print(f"[__main__][measurement.positions]\n{list(map(lambda x: x.position.tolist(), measurements))}\n")
+    print(f"[__main__][measurement.covariances]\n{list(map(lambda x: x.covariance.tolist(), measurements))}\n")
     ekf.add_landmarks(measurements) 
 
     # Moved the original get_robot_pose() out of the while loop and hard coded it
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
 
+    pygame.font.init() 
+    TITLE_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 35)
+    TEXT_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 40)
+    
+    width, height = 700, 660
+    canvas = pygame.display.set_mode((width, height))
+    pygame.display.set_caption('ECE4078 2021 Lab')
+    pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
+    canvas.fill((0, 0, 0))
+    splash = pygame.image.load('pics/loading.png')
+    pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
+                     pygame.image.load('pics/8bit/pibot2.png'),
+                     pygame.image.load('pics/8bit/pibot3.png'),
+                    pygame.image.load('pics/8bit/pibot4.png'),
+                     pygame.image.load('pics/8bit/pibot5.png')]
+    pygame.display.update()
+
+    start = True # False
+
+    counter = 40
+    while not start:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                start = True
+        canvas.blit(splash, (0, 0))
+        x_ = min(counter, 600)
+        if x_ < 600:
+            canvas.blit(pibot_animate[counter%10//2], (x_, 565))
+            pygame.display.update()
+            counter += 2
+
+    operate = Operate(args)
+    operate.ekf = ekf
+
+    operate.run_slam()
+    
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
         # enter the waypoints
@@ -262,13 +324,19 @@ if __name__ == "__main__":
 
         # robot drives to the waypoint
         waypoint = [x,y]
-        robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
-        
+
+        robot_pose = drive_to_point(waypoint, robot_pose, operate, sim=args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
+        then = time.time()
+        while time.time() - then < 0.1:
+            get_robot_pose(operate)
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
         # exit
         ppi.set_velocity([0, 0])
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
         uInput = input("Add a new waypoint? [Y/N]")
-        if uInput == 'N':
+        if uInput == 'N' or uInput == 'n':
             break
 

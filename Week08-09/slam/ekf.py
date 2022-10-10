@@ -24,12 +24,12 @@ class EKF:
         self.init_lm_cov = 1e3
         self.robot_init_state = None
         self.lm_pics = []
-        # for i in range(1, 11):
-        #     f_ = f'./pics/8bit/lm_{i}.png'
-        #     self.lm_pics.append(pygame.image.load(f_))
-        # f_ = f'./pics/8bit/lm_unknown.png'
-        # self.lm_pics.append(pygame.image.load(f_))
-        # self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
+        for i in range(1, 11):
+            f_ = f'./pics/8bit/lm_{i}.png'
+            self.lm_pics.append(pygame.image.load(f_))
+        f_ = f'./pics/8bit/lm_unknown.png'
+        self.lm_pics.append(pygame.image.load(f_))
+        self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
         
     def reset(self):
         self.robot.state = np.zeros((3, 1))
@@ -108,7 +108,7 @@ class EKF:
         x = self.get_state_vector()
         
         # Construct measurement index list
-        tags = [lm.tag-1 for lm in measurements]
+        tags = [lm.tag for lm in measurements]
         idx_list = [self.taglist.index(tag) for tag in tags]
 
         # Stack measurements and set covariance
