@@ -278,7 +278,7 @@ if __name__ == "__main__":
     pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
                      pygame.image.load('pics/8bit/pibot2.png'),
                      pygame.image.load('pics/8bit/pibot3.png'),
-                    pygame.image.load('pics/8bit/pibot4.png'),
+                     pygame.image.load('pics/8bit/pibot4.png'),
                      pygame.image.load('pics/8bit/pibot5.png')]
     pygame.display.update()
 
@@ -327,8 +327,8 @@ if __name__ == "__main__":
 
         robot_pose = drive_to_point(waypoint, robot_pose, operate, sim=args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
         then = time.time()
-        while time.time() - then < 0.1:
-            get_robot_pose(operate)
+        while time.time() - then < 1:
+            operate.take_pic()
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
         # exit
