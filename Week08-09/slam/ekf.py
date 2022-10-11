@@ -21,7 +21,7 @@ class EKF:
 
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 0.1
         self.robot_init_state = None
         self.lm_pics = []
         for i in range(1, 11):
@@ -37,7 +37,7 @@ class EKF:
         self.taglist = []
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 0.1
         self.robot_init_state = None
 
     def number_landmarks(self):
@@ -50,7 +50,7 @@ class EKF:
     
     def set_state_vector(self, state):
         self.robot.state = state[0:3,:]
-        self.markers = np.reshape(state[3:,:], (2,-1), order='F')
+        # self.markers = np.reshape(state[3:,:], (2,-1), order='F')
     
     def save_map(self, fname="slam_map.txt"):
         if self.number_landmarks() > 0:
@@ -115,12 +115,13 @@ class EKF:
         z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
         R = np.zeros((2*len(measurements),2*len(measurements)))
         
-        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
-            for i in range(len(measurements)):
-                R[2*i:2*i+2,2*i:2*i+2] = 0.00001
-        else:
-            for i in range(len(measurements)):
-                R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+        # if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
+        #     for i in range(len(measurements)):
+        #         R[2*i:2*i+2,2*i:2*i+2] = 0.00001
+        # else:
+        for i in range(len(measurements)):
+            R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+            # print(f"[ekf][update][measurements[i].covariance]{measurements[i].covariance}")
 
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
@@ -134,6 +135,8 @@ class EKF:
         # Correct the state
         y = z - z_hat
         x = x + K @ y
+        # print(f"[ekf][update][z_hat]\n{z_hat}")
+        # print(f"[ekf][update][z]{z}\n")
 
         # Correct covariance
         self.P = (np.eye(x.shape[0]) - K @ C) @ self.P
@@ -149,7 +152,11 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
         Q = np.zeros((n,n))
-        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.01*np.eye(3)
+        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 1e-4*np.eye(3)
+        # print(f"[ekf][predict_covariance][Q]\n")
+        # print(f"{Q[0]}")
+        # print(f"{Q[1]}")
+        # print(f"{Q[2]}")
         return Q
 
     def add_landmarks(self, measurements):
@@ -176,33 +183,8 @@ class EKF:
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
             self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
-            self.P[-2,-2] = 1e-2 # self.init_lm_cov**2
-            self.P[-1,-1] = 1e-2 # self.init_lm_cov**2
-
-    def add_landmarks(self, measurements):
-        if not measurements:
-            return
-
-        th = self.robot.state[2]
-        robot_xy = self.robot.state[0:2,:]
-        R_theta = np.block([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
-
-        # Add new landmarks to the state
-        for lm in measurements:
-            if lm.tag in self.taglist:
-                # ignore known tags
-                continue
-            
-             #lm_bff = lm.position[:, None]
-            # lm_inertial = robot_xy + R_theta @ lm_bff
-            self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm.position[:, None]), axis=1)
-
-            # Create a simple, large covariance to be fixed by the update step
-            self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
-            self.P = np.concatenate((self.P, np.zeros((self.P.shape[0], 2))), axis=1)
-            self.P[-2,-2] = 1e-2
-            self.P[-1,-1] = 1e-2
+            self.P[-2,-2] = self.init_lm_cov**2
+            self.P[-1,-1] = self.init_lm_cov**2
 
     ##########################################
     ##########################################
