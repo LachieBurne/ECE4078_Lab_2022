@@ -294,7 +294,7 @@ if __name__ == "__main__":
     pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
                      pygame.image.load('pics/8bit/pibot2.png'),
                      pygame.image.load('pics/8bit/pibot3.png'),
-                    pygame.image.load('pics/8bit/pibot4.png'),
+                     pygame.image.load('pics/8bit/pibot4.png'),
                      pygame.image.load('pics/8bit/pibot5.png')]
     pygame.display.update()
 
