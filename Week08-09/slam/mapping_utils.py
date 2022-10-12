@@ -10,9 +10,9 @@ class MappingUtils:
         self.check_valid()
     
     def check_valid(self):
-        assert (markers.shape[0] == 2), "Markers must be 2xn."
-        n = markers.shape[1]
-        assert (n == len(taglist)), "No. of markers and tags do not match."
+        assert (self.markers.shape[0] == 2), "Markers must be 2xn."
+        n = self.markers.shape[1]
+        assert (n == len(self.taglist)), "No. of markers and tags do not match."
         assert (2*n == self.covariance.shape[0]), "Covariance matrix does not match size of markers."
         assert (self.covariance.shape[0] == self.covariance.shape[1]), "Covariance matrix is not square."
         cov_sym_score = np.linalg.norm(self.covariance - self.covariance.T)
@@ -29,7 +29,7 @@ class MappingUtils:
         with open(fname,'r') as map_file:
             map_attributes = json.load(map_file)
         self.taglist = map_attributes["taglist"]
-        self.markers = np.array(map_attributes["markers"])
+        self.markers = np.array(map_attributes["map"])
         self.covariance = np.array(map_attributes["covariance"])
         self.check_valid()
     

@@ -50,12 +50,24 @@ class EKF:
     
     def set_state_vector(self, state):
         self.robot.state = state[0:3,:]
-        self.markers = np.reshape(state[3:,:], (2,-1), order='F')
+        # self.markers = np.reshape(state[3:,:], (2,-1), order='F')
     
     def save_map(self, fname="slam_map.txt"):
         if self.number_landmarks() > 0:
             utils = MappingUtils(self.markers, self.P[3:,3:], self.taglist)
             utils.save(fname)
+
+    ## Kelvin Added ##########################
+    def load_map(self):
+        utils = MappingUtils()
+        utils.load(fname='lab_output/slam.txt')
+        self.markers = utils.markers
+        self.taglist = utils.taglist
+        cov = utils.covariance
+        self.P = np.zeros((cov.shape[0] + 3, cov.shape[0] +3))
+        self.P[3:,3:] = cov
+    ##########################################
+    
 
     def recover_from_pause(self, measurements):
         if not measurements:
@@ -91,6 +103,10 @@ class EKF:
         x = self.get_state_vector()
 
         # TODO: add your codes here to compute the predicted x
+        self.robot.drive(raw_drive_meas)
+
+        Q = self.predict_covariance(raw_drive_meas)
+        self.P = F @ self.P @ F.T + Q
 
     # the update step of EKF
     def update(self, measurements):
@@ -110,11 +126,22 @@ class EKF:
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
         z_hat = z_hat.reshape((-1,1),order="F")
-        H = self.robot.derivative_measure(self.markers, idx_list)
+        C = self.robot.derivative_measure(self.markers, idx_list)
 
         x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x
+        S = C @ self.P @ C.T + R
+        K = self.P @ C.T @ np.linalg.inv(S)
+        
+        # Correct the state
+        y = z - z_hat
+        x = x + K @ y
+
+        self.set_state_vector(x)
+
+        # Correct covariance
+        self.P = (np.eye(x.shape[0]) - K @ C) @ self.P
 
 
     def state_transition(self, raw_drive_meas):

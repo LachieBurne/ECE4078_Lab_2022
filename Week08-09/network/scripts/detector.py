@@ -14,23 +14,23 @@ class Detector:
         self.args = args
         ## Kelvin Added ########################## 
         self.model_YOLO = torch.hub.load('ultralytics/yolov5', 'custom', path=ckpt, force_reload=True)
-        self.model = Resnet18Skip(args)
         ##########################################
-        if torch.cuda.torch.cuda.device_count() > 0 and use_gpu:
-            self.use_gpu = True
-            self.model = self.model.cuda()
-        else:
-            self.use_gpu = False
-        self.load_weights(ckpt)
-        self.model = self.model.eval()
-        cmd_printer.divider(text="warning")
-        print('This detector uses "RGB" input convention by default')
-        print('If you are using Opencv, the image is likely to be in "BRG"!!!')
-        cmd_printer.divider()
+        # self.model = Resnet18Skip(args)
+        # if torch.cuda.torch.cuda.device_count() > 0 and use_gpu:
+        #     self.use_gpu = True
+        #     self.model = self.model.cuda()
+        # else:
+        #     self.use_gpu = False
+        # self.load_weights(ckpt)
+        # self.model = self.model.eval()
+        # cmd_printer.divider(text="warning")
+        # print('This detector uses "RGB" input convention by default')
+        # print('If you are using Opencv, the image is likely to be in "BRG"!!!')
+        # cmd_printer.divider()
         self.colour_code = np.array([(220, 220, 220), (128, 0, 0), (128, 128, 0), (0, 128, 0), (192, 68, 0), (0, 0, 255)])
         # color of background, apple, lemon, pear, orange, strawberry
 
-    def detect_single_image(self, np_img, image_pose):
+    def detect_single_image(self, np_img, image_pose, using_sim):
 
         ## Kelvin Commented Out ########################## 
         # NOT USING RESNET
@@ -50,7 +50,7 @@ class Detector:
 
         ## Kelvin Added ########################## 
         # Predict using YOLO
-        if args.using_sim:
+        if using_sim:
             self.model_YOLO.conf = 0.2
         else:
             self.model_YOLO.conf = 0.65
@@ -79,15 +79,15 @@ class Detector:
                 ymax = int(YOLO_pred[i,3])
                 label = class_converter[YOLO_pred[i,5]]
 
-                u_0 = 640/2 if args.using_sim else 320/2
-                v_0 = 480/2 if args.using_sim else 240/2
+                u_0 = 640/2 if using_sim else 320/2
+                v_0 = 480/2 if using_sim else 240/2
                 
                 fruit_xcent = (xmin + xmax)/2 - u_0
                 fruit_ycent = (ymin + ymax)/2 - v_0
                 fruit_width = xmax - xmin
                 fruit_height = ymax - ymin
                 
-                yolo_stuff[i] = (label, [fruit_xcent,fruit_ycent, fruit_width, fruit_height])
+                yolo_stuff.append((label, [fruit_xcent,fruit_ycent, fruit_width, fruit_height]))
                 pred[ymin:ymax, xmin:xmax] = np.ones((ymax-ymin, xmax-xmin)) * label
 
             for (target_num, box) in yolo_stuff:
