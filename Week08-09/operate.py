@@ -9,7 +9,7 @@ import time
 ## Kelvin Added ##########################
 from auto_fruit_search import *
 from TargetPoseEst import *
-# from {Jeremy Path Planning Algorithm File} import *
+from Astar import *
 ##########################################
 
 # import utility functions
@@ -35,7 +35,7 @@ from network.scripts.detector import Detector
 ##########################################
 
 class Operate:
-    def __init__(self, args):
+    def __init__(self, args, goals, aruco_pos):
         self.folder = 'pibot_dataset/'
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
@@ -77,9 +77,9 @@ class Operate:
         # Initialize global variables to flag algorithm phases
         self.start_planning = False         # Flag for Path Planning to Start
         self.goals = goals                  # Waypoints/Goals for Fruit Search
-        self.unknown_obstacles = []         # List of Unknown Obstacles (Fruits)
+        self.unknown_obstacles = {}         # List of Unknown Obstacles (Fruits)
         self.goal_num = 0                   # Number of fruits to be searched
-        self.aruco_pos = aruco_positions    # Position of Aruco Markers
+        self.aruco_pos = aruco_pos          # Position of Aruco Markers
         self.path = None                    # Path for Fruit Search
         self.run_path = False               # Flag for running Planned Path
         self.current_waypoint_idx = 1       # Index of current waypoint
@@ -168,7 +168,7 @@ class Operate:
         if self.run_path or self.call_calib:
             self.command['inference'] = True
         if self.command['inference'] and self.detector is not None:
-            self.detector_output, self.network_vis, completed_img_dict = self.detector.detect_single_image(self.img, self.ekf.robot.state)
+            self.detector_output, self.network_vis, completed_img_dict = self.detector.detect_single_image(self.img, self.ekf.robot.state, args.using_sim)
             self.command['inference'] = False
             self.file_output = (self.detector_output, self.ekf)
             target_est = self.calc_fruit_pos(completed_img_dict)
@@ -216,16 +216,21 @@ class Operate:
 
     # wheel and camera calibration for SLAM
     def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
-        camera_matrix = np.loadtxt(fileK, delimiter=',')
+        if args.using_sim:
+            fileK = "{}intrinsic_sim.txt".format(datadir)
+            fileS = "{}scale_sim.txt".format(datadir)
+            fileB = "{}baseline_sim.txt".format(datadir)
+        else:
+            fileK = "{}intrinsic.txt".format(datadir)
+            fileS = "{}scale.txt".format(datadir)
+            fileB = "{}baseline.txt".format(datadir)
         fileD = "{}distCoeffs.txt".format(datadir)
-        dist_coeffs = np.loadtxt(fileD, delimiter=',')
-        fileS = "{}scale.txt".format(datadir)
+
+        camera_matrix = np.loadtxt(fileK, delimiter=',')
         scale = np.loadtxt(fileS, delimiter=',')
-        if ip == 'localhost':
-            scale /= 2
-        fileB = "{}baseline.txt".format(datadir)  
         baseline = np.loadtxt(fileB, delimiter=',')
+        dist_coeffs = np.loadtxt(fileD, delimiter=',')
+
         robot = Robot(baseline, scale, camera_matrix, dist_coeffs)
         return EKF(robot)
 
@@ -298,7 +303,8 @@ class Operate:
     # Path navigation 
     def navigate_path(self):
 
-        wheel_vel = 20
+        tick = 20
+        turning_tick = 30
         scale = self.ekf.robot.wheels_scale
         baseline = self.ekf.robot.wheels_width
         
@@ -310,12 +316,12 @@ class Operate:
             if self.calib_turn_number == 0:
                 self.notification = "Calibration Started"
 
-            dt = (abs(angle_diff)*baseline) / (2 * wheel_vel*scale )
+            dt = (abs(angle_diff)*baseline) / (2 * turning_tick * scale )
        
-            lv, rv = self.pibot.set_velocity([0, 1], turning_tick=wheel_vel, time=dt)
+            lv, rv = self.pibot.set_velocity([0, 2], turning_tick=turning_tick, time=dt)
 
             self.calib_turn_number += 1     
-            if self.calib_turn_number == 8:
+            if self.calib_turn_number == 3:
                 self.call_calib = False
                 self.start_planning = True
                 self.notification = 'Calibration Over'
@@ -324,59 +330,62 @@ class Operate:
                 self.current_waypoint_idx = 1
         # Path Following Phase (from auto_fruit_search.py)
         elif self.run_path:
-            try:
-                waypoint = self.path[self.current_waypoint_idx]           
-                if len(self.path) > 3:
-                    print('Driving to :', waypoint)
+            #try:
+            waypoint = self.path[self.current_waypoint_idx]           
+            if len(self.path) > 3:
+                print('Driving to :', waypoint)
 
-                    if self.turning:
-                        angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-                        dt = (abs(angle_diff)*baseline) / (2*wheel_vel*scale)
-                        print("Turning for {:.2f} seconds".format(dt))
+                if self.turning:
+                    angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+                    dt = (abs(angle_diff)*baseline) / (2*turning_tick*scale)
+                    print("Turning for {:.5f} seconds".format(dt))
 
-                        angular_velocity = 1 if angle_diff > 0 else -1
-                        lv, rv = self.pibot.set_velocity([0, 2*angular_velocity], turning_tick=wheel_vel, time=dt)            
-                    else:
-                        dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-
-                        dt = (1.0 / (scale * wheel_vel)) * dist_diff
-                        print("Driving for {:.2f} seconds".format(dt))
-                        lv, rv = self.pibot.set_velocity([2, 0], tick=wheel_vel, time=dt)
-
-                        print("Arrived at [{}, {}]\n".format(waypoint[0], waypoint[1]))
-                        self.current_waypoint_idx += 1
-                        
-
-                    if self.current_waypoint_idx == len(self.path)-2:
-                        self.at_goal = True
-                        self.run_path = False
-                        self.call_calib = True
-                        self.command['inference'] = False 
+                    angular_velocity = 1 if angle_diff > 0 else -1
+                    lv, rv = self.pibot.set_velocity([0, angular_velocity], turning_tick=turning_tick, time=dt)            
+                    print("Robot state: ")
+                    print(self.ekf.robot.state.squeeze())
                 else:
-                    self.at_goal = True
-                    lv, rv, dt = 0, 0, 0
+                    dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+
+                    dt = (1.0 / (scale * tick)) * dist_diff
+                    print("Driving for {:.5f} seconds".format(dt))
+                    lv, rv = self.pibot.set_velocity([1, 0], tick=tick, time=dt)
+                    print("Robot state: ")
+                    print(self.ekf.robot.state.squeeze())
+                    print("Arrived at [{}, {}]\n".format(waypoint[0], waypoint[1]))
+                    self.current_waypoint_idx += 1
                     
-                if self.at_goal:
-                    self.at_goal = False
-                    self.goal_num += 1
+
+                if self.current_waypoint_idx == len(self.path)-2:
+                    self.at_goal = True
                     self.run_path = False
-                    self.arrived_goal.append(self.path[-1])
-                    self.notification = 'Arrived at Goal {}'.format(self.goal_num)
-                    operate.save_image()
-                    time.sleep(10)
-                    self.nextgoal = True
                     self.call_calib = True
-
-                self.turning = not self.turning
-            except:
-                self.unknown_obstacles = {}
-                self.current_waypoint_idx = 1
-                self.command['inference'] = True
-                self.start_planning = True
+                    self.command['inference'] = False 
+            else:
+                self.at_goal = True
+                lv, rv, dt = 0, 0, 0
+                
+            if self.at_goal:
+                self.at_goal = False
+                self.goal_num += 1
                 self.run_path = False
-                self.notification = 'No path found, replanning...'
+                self.arrived_goal.append(self.path[-1])
+                self.notification = 'Arrived at Goal {}'.format(self.goal_num)
+                operate.save_image()
+                time.sleep(10)
+                self.nextgoal = True
+                self.call_calib = True
 
-                return 0, 0, 0
+            self.turning = not self.turning
+            # except:
+            #     self.unknown_obstacles = {}
+            #     self.current_waypoint_idx = 1
+            #     self.command['inference'] = True
+            #     self.start_planning = True
+            #     self.run_path = False
+            #     self.notification = 'No path found, replanning...'
+
+            #     return 0, 0, 0
         
         return lv, rv, dt
     ##########################################
@@ -515,12 +524,12 @@ if __name__ == "__main__":
     pygame.display.update()
 
     ## Kelvin Added ##########################
-    fruit_names, fruit_positions, aruco_positions = read_true_map(args.map)
+    fruit_name, fruit_pos, aruco_pos = read_true_map(args.map)
     search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruit_names, fruit_positions)
+    print_target_fruits_pos(search_list, fruit_name, fruit_pos)
     goals = []
     for fruit_for_search in search_list:
-        goals.append(fruit_positions[fruit_names.index(fruit_for_search)])
+        goals.append(fruit_pos[fruit_name.index(fruit_for_search)])
     ##########################################
 
     start = False
@@ -537,7 +546,7 @@ if __name__ == "__main__":
             pygame.display.update()
             counter += 2
 
-    operate = Operate(args)
+    operate = Operate(args, goals, aruco_pos)
 
     while start:
         operate.update_keyboard()
@@ -545,8 +554,7 @@ if __name__ == "__main__":
         ## Kelvin Added ##########################
         operate.detect_target()
         if operate.start_planning:
-            # plan_path(operate)
-            pass
+            path_planning(operate)
         ##########################################
         drive_meas = operate.control()
         operate.update_slam(drive_meas)

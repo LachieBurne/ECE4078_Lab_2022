@@ -48,8 +48,8 @@ def read_true_map(fname):
                     aruco_true_pos[9][1] = y
                 else:
                     marker_id = int(key[5])
-                    aruco_true_pos[marker_id][0] = x
-                    aruco_true_pos[marker_id][1] = y
+                    aruco_true_pos[marker_id-1][0] = x
+                    aruco_true_pos[marker_id-1][1] = y
             else:
                 fruit_list.append(key[:-2])
                 if len(fruit_true_pos) == 0:
