@@ -31,7 +31,7 @@ The [auto_fruit_search.py](auto_fruit_search.py) is provided to you as a skeleto
 	2. [M4_true_map_5fruits.txt](M4_true_map_5fruits.txt) - contains 5 fruits + 10 markers, it is used for 
 		- spawn the map in Gazebo/real world for Level 1 and Level 3 (refer to [marking scheme](#marking-schemes) for the level definitions)
 		- used as the true map input for Level 1
-
+- **[UPDATE]**: The updated version of [ECE4078.world](ECE4078.world) has a 0.5m circle around the robot model which helps you to check whether the robot has reach the target. You can replace the world file in ```catkin_ws/src/penguinpi_gazebo/worlds/ECE4078.world``` with this updated version
 ---
 ## Waypoint navigation (Week 8)
 As a starting point to complete the M4 task, you will need to develop a module to accept a list of waypoints as input to navigate the robot to the goal position. If you wish to demonstrate this component alone, you may manually enter the target waypoints. Otherwise, this module will take the output of the [path planning module](#path-planning-with-a-known-map-week-9) as input. 

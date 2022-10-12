@@ -9,10 +9,7 @@ from os import listdir
 import torch
 from sklearn.cluster import KMeans
 
-USING_SIM = True
-
-
-def get_YOLO_stuff(fruit_select):
+def get_YOLO_stuff(fruit_select, using_sim):
 
     fruit_xmin = fruit_select[0]
     fruit_ymin = fruit_select[1]
@@ -22,10 +19,8 @@ def get_YOLO_stuff(fruit_select):
     fruit_class = fruit_select[5]
     fruit_name = fruit_select[6]
 
-    u_0 = 640/2 if USING_SIM else 320/2
-    v_0 = 480/2 if USING_SIM else 240/2
-   
-   
+    u_0 = 640/2 if using_sim else 320/2
+    v_0 = 480/2 if using_sim else 240/2
    
     fruit_xcent = (fruit_xmin + fruit_xmax)/2 - u_0
     fruit_ycent = (fruit_ymin + fruit_ymax)/2 - v_0
@@ -36,16 +31,14 @@ def get_YOLO_stuff(fruit_select):
 
     return (class_converter[fruit_class], [fruit_xcent,fruit_ycent, fruit_width, fruit_height])
 
-def unpack_image(image):
+def unpack_image(image, using_sim):
     """
     :param: image The file path to the image
     :return: A list of tuples in the form of (fruit_class, bounding_box)
     """
 
     #confidence threshold.
-
-
-    if USING_SIM:
+    if using_sim:
         model.conf = 0.2
     else:
         model.conf = 0.65
@@ -57,7 +50,7 @@ def unpack_image(image):
     yolo_stuff = []
 
     for fruit_data in image_data_list:
-        yolo_stuff.append(get_YOLO_stuff(fruit_data))
+        yolo_stuff.append(get_YOLO_stuff(fruit_data, using_sim))
 
     return yolo_stuff
 
@@ -80,10 +73,9 @@ def unpack_image(image):
 
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
-def get_image_info(base_dir, file_path, image_poses):
+def get_image_info(img_file_path, image_poses, using_sim):
     """
     Output in the form of 
-
     """
     # there are at most five types of targets in each image
     target_lst_box = [[], [], [], [], []]
@@ -93,8 +85,7 @@ def get_image_info(base_dir, file_path, image_poses):
     # add the bounding box info of each target in each image
     # target labels: 1 = apple, 2 = lemon, 3 = pear, 4 = orange, 5 = strawberry, 0 = not_a_target
     
-    img_file_path = os.path.join(base_dir, file_path)
-    all_vals = unpack_image(img_file_path)
+    all_vals = unpack_image(img_file_path, using_sim)
     for (target_num, box) in all_vals:
         pose = image_poses[file_path] # [x, y, theta] 
         target_lst_box[target_num-1].append(box) # bounding box of target
@@ -110,14 +101,14 @@ def get_image_info(base_dir, file_path, image_poses):
     return completed_img_dict
 
 # estimate the pose of a target based on size and location of its bounding box in the robot's camera view and the robot's pose
-def estimate_pose(base_dir, camera_matrix, completed_img_dict):
+def estimate_pose(camera_matrix, completed_img_dict, using_sim):
     camera_matrix = camera_matrix
     focal_length = camera_matrix[0][0]
     # actual sizes of targets [For the simulation models]
     # You need to replace these values for the real world objects
     target_dimensions = []
 
-    if USING_SIM:
+    if using_sim:
         apple_dimensions = [0.075448, 0.074871, 0.071889]
         target_dimensions.append(apple_dimensions)
         lemon_dimensions = [0.060588, 0.059299, 0.053017]
@@ -141,10 +132,6 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         target_dimensions.append(orange_dimensions)
         strawberry_dimensions = [0.0412, 0.0410, 0.0382]
         target_dimensions.append(strawberry_dimensions)
-
-
-
-#######Need to change dimensions for different runs
 
     target_list = ['apple', 'lemon', 'pear', 'orange', 'strawberry']
 
@@ -220,59 +207,6 @@ def merge_to_mean(position_est, remove_outlier = False):
     return new_mean
 
 
-def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False, use_Kmeans = False):
-
-    # Inputs:
-    # position_est : An numpy array of coordinates {position_est[estimation #][0 = x, 1 = y]}
-    # distance_threshold : the distance assumption that two fruits of the same type will be apart for
-    # remove_outlier : Boolean (Remove outliers using Standard Distribution z-scores)
-    # Outputs:
-    # new_mean : An numpy array of coordinates {new_mean[0 = x, 1 = y]}
-
-    # Initialize two sets of position estimations for each fruit of the same type
-    position_est1 = []
-    position_est2 = []
-
-    # Sort data
-    for i in range(len(position_est)):
-
-        if(use_Kmeans):
-
-            kmeans = KMeans(n_clusters = 2)
-            kmeans.fit(position_est)
-            if(kmeans.labels_[i] == 0):
-                position_est1.append(position_est[i])
-            else:
-                position_est2.append(position_est[i])
-
-        else:
-
-            if(i == 0): # Take the first position estimation as the reference for the first fruit
-                position_est1.append(position_est[i])
-                continue
-            else:
-                coordinates = position_est[i]
-                x_distance = np.abs(coordinates[0] - position_est[0][0])
-                y_distance = np.abs(coordinates[1] - position_est[0][1])
-                distance = np.sqrt(x_distance ** 2 + y_distance ** 2)
-                if(distance < distance_threshold):
-                    position_est1.append(coordinates)
-                else:
-                    position_est2.append(coordinates)
-
-    # Merge position estimations
-    position1 = merge_to_mean(position_est1, remove_outlier)
-    position2 = merge_to_mean(position_est2, remove_outlier)
-
-    # return the position estimations
-    positions = []
-    if(position1 is not None):
-        positions.append(position1)
-    if(position2 is not None):
-        positions.append(position2)
-    return positions
-        
-
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
 def merge_estimations(target_pose_dict):
     target_map = target_pose_dict
@@ -298,15 +232,15 @@ def merge_estimations(target_pose_dict):
     remove_outlier = False
     use_Kmeans = False
     if len(apple_est) > 1:
-        apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        apple_est = merge_to_mean(apple_est, remove_outlier = False)
     if len(lemon_est) > 1:
-        lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        lemon_est = merge_to_mean(lemon_est, remove_outlier = False)
     if len(pear_est) > 1:
-        pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        pear_est = merge_to_mean(pear_est, remove_outlier = False)
     if len(orange_est) > 1:
-        orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        orange_est = merge_to_mean(orange_est, remove_outlier = False)
     if len(strawberry_est) > 1:
-        strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        strawberry_est = merge_to_mean(strawberry_est, remove_outlier = False)
 
     for i in range(2):
         try:
@@ -345,9 +279,6 @@ if __name__ == "__main__":
     #Downloads from github once. We can make it do this locally if necessary.
     
 
-####   Intrinsic for real set. Sim for simulator.
-####
-
     # camera_matrix = np.ones((3,3))/2
     intrinsic_filename = 'intrinsic_sim.txt' if USING_SIM else 'intrinsic.txt'
     calibration_path = 'calibration/param/'
@@ -368,8 +299,8 @@ if __name__ == "__main__":
     # {image_0:{apple:{y:YPOS,x:XPOS}}}
     target_map = {}        
     for file_path in image_poses.keys():
-        completed_img_dict = get_image_info(base_dir, file_path, image_poses)
-        target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
+        completed_img_dict = get_image_info(file_path, image_poses, USING_SIM)
+        target_map[file_path] = estimate_pose(camera_matrix, completed_img_dict, USING_SIM)
 
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
     target_est = merge_estimations(target_map)
@@ -379,5 +310,3 @@ if __name__ == "__main__":
         json.dump(target_est, fo)
     
     print('Estimations saved :)')
-
-
