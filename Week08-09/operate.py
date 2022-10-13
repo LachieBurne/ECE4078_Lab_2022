@@ -635,9 +635,10 @@ if __name__ == "__main__":
         state = operate.ekf.robot.state[:2].squeeze()
         robot_pose = [state[0],state[1]]
 
-        path = RRT.RRTC(start=robot_pose,goal=search_list_pose[i],obstacle_list=obs,width=3,height=3,expand_dis=RRT_expand,path_resolution=RRT_res,max_points=500)
-
-        for waypoint in path:
+        path = RRT.RRTC(start=robot_pose,goal=search_list_pose[i],obstacle_list=obs,width=3,height=3,expand_dis=0.5,path_resolution=RRT_res,max_points=5000)
+        planned = path.planning()
+        print(planned)
+        for waypoint in planned:
 
             dist = get_distance_robot_to_goal(robot_pose,[waypoint[0],waypoint[1],0])
             while dist > 0.01:

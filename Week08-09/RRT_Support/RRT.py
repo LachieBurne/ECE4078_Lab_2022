@@ -4,7 +4,7 @@ import random
 import os
 import math
 
-from ece4078.Week03.Obstacle import Circle
+from RRT_Support.Obstacle import Circle
 
 
 class RRTC:
@@ -224,8 +224,8 @@ class RRTC:
 
 def get_obstacles(fruit_true_pos, aruco_true_pos):
     obstacles = []
-    fruit_safety = 0.2
-    aruco_safety = 0.2
+    fruit_safety = 0.15
+    aruco_safety = 0.15
     for fruit in fruit_true_pos:
         # obstacles.append(Rectangle((fruit[0],fruit[1]),fruit_safety,fruit_safety))
         obstacles.append(Circle(fruit[0],fruit[1],fruit_safety))
