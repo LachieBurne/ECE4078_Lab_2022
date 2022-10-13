@@ -214,72 +214,72 @@ def init_ekf(datadir, ip, sim=False):
     return EKF(robot)
 
 # main loop
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Fruit searching")
-    parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
-    parser.add_argument("--port", metavar='', type=int, default=40000)
-    # Adds the calibration directory arg (normally default)
-    parser.add_argument("--calib_dir", type=str, default="calibration/param/")
-    parser.add_argument("--using_sim", action='store_true')
-    args, _ = parser.parse_known_args()
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser("Fruit searching")
+#     parser.add_argument("--map", type=str, default='M4_true_map_5fruit.txt')
+#     parser.add_argument("--ip", metavar='', type=str, default='localhost')
+#     parser.add_argument("--port", metavar='', type=int, default=40000)
+#     # Adds the calibration directory arg (normally default)
+#     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+#     parser.add_argument("--using_sim", action='store_true')
+#     args, _ = parser.parse_known_args()
 
-    print(args.using_sim)
+#     print(args.using_sim)
 
-    ppi = PenguinPi(args.ip,args.port)
+#     ppi = PenguinPi(args.ip,args.port)
 
-    # read in the true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
-    search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+#     # read in the true map
+#     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map(args.map)
+#     search_list = read_search_list()
+#     print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
 
-    # TODO: Summon EKF into existence 
-    ekf = init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
-    aruco_det = aruco.aruco_detector(
-        ekf.robot, marker_length = 0.07) # size of the ARUCO markers
+#     # TODO: Summon EKF into existence 
+#     ekf = init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
+#     aruco_det = aruco.aruco_detector(
+#         ekf.robot, marker_length = 0.07) # size of the ARUCO markers
 
-    # Gets the true measurments from the true map and convert to markers
-    # NOTE: This will not work for future milestones
-    measurements = []
-    for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i))
-    # Pass all these markers into the EKF
-    ekf.add_landmarks(measurements) 
+#     # Gets the true measurments from the true map and convert to markers
+#     # NOTE: This will not work for future milestones
+#     measurements = []
+#     for i, position in enumerate(aruco_true_pos):
+#         measurements.append(measure.Marker(position, tag=i))
+#     # Pass all these markers into the EKF
+#     ekf.add_landmarks(measurements) 
 
-    # Moved the original get_robot_pose() out of the while loop and hard coded it
-    waypoint = [0.0,0.0]
-    robot_pose = [0.0,0.0,0.0]
+#     # Moved the original get_robot_pose() out of the while loop and hard coded it
+#     waypoint = [0.0,0.0]
+#     robot_pose = [0.0,0.0,0.0]
 
-    # The following code is only a skeleton code the semi-auto fruit searching task
-    while True:
-        # enter the waypoints
-        # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
-        x,y = 0.0,0.0
-        x = input("X coordinate of the waypoint: ")
-        try:
-            x = float(x)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        y = input("Y coordinate of the waypoint: ")
-        try:
-            y = float(y)
-        except ValueError:
-            print("Please enter a number.")
-            continue
+#     # The following code is only a skeleton code the semi-auto fruit searching task
+#     while True:
+#         # enter the waypoints
+#         # instead of manually enter waypoints, you can get coordinates by clicking on a map, see camera_calibration.py
+#         x,y = 0.0,0.0
+#         x = input("X coordinate of the waypoint: ")
+#         try:
+#             x = float(x)
+#         except ValueError:
+#             print("Please enter a number.")
+#             continue
+#         y = input("Y coordinate of the waypoint: ")
+#         try:
+#             y = float(y)
+#         except ValueError:
+#             print("Please enter a number.")
+#             continue
 
-        # New variable used for the ekf.predict() function
-        control_clock = time.time()
+#         # New variable used for the ekf.predict() function
+#         control_clock = time.time()
 
-        # robot drives to the waypoint
-        waypoint = [x,y]
-        robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
+#         # robot drives to the waypoint
+#         waypoint = [x,y]
+#         robot_pose, control_clock = drive_to_point(waypoint,robot_pose,control_clock,args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
         
-        print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
+#         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
-        # exit
-        ppi.set_velocity([0, 0])
-        uInput = input("Add a new waypoint? [Y/N]")
-        if uInput == 'N':
-            break
+#         # exit
+#         ppi.set_velocity([0, 0])
+#         uInput = input("Add a new waypoint? [Y/N]")
+#         if uInput == 'N':
+#             break
 
