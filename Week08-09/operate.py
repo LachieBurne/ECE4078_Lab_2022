@@ -449,8 +449,8 @@ class Operate:
 
         x_r = self.ekf.robot.state[0]
         y_r = self.ekf.robot.state[1]
-        x_w = waypoint[0]
-        y_w = waypoint[1]
+        x_w = float(waypoint[0])
+        y_w = float(waypoint[1])
         x_diff = x_w - x_r
         y_diff = y_w - y_r
         theta_r = self.ekf.robot.state[2]
@@ -503,71 +503,71 @@ class Operate:
 
 
 
-## Kelvin Added ##########################
-    # Path navigation 
-    def navigate_path(self):
-        # Position Calibration Phase
-        # Turn 8 times to calibrate robot's position
-        if self.call_calib:
-            angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-            angular_velocity = 1 if angle_diff > 0 else -1
-            self.command['motion'] = [0, angular_velocity]
+# ## Kelvin Added ##########################
+#     # Path navigation 
+#     def navigate_path(self):
+#         # Position Calibration Phase
+#         # Turn 8 times to calibrate robot's position
+#         if self.call_calib:
+#             angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+#             angular_velocity = 1 if angle_diff > 0 else -1
+#             self.command['motion'] = [0, angular_velocity]
 
-            lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+#             lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
 
-            if len(lms) >= 1:
-                self.call_calib = False
-                self.start_planning = True
-                self.notification = 'Calibration Over'
-                self.calib_turn_number = 0
-                self.command['inference'] = True
-                # self.current_waypoint_idx = 1
-        # Path Following Phase (from auto_fruit_search.py)
-        elif self.run_path:
-            #try
-            lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+#             if len(lms) >= 1:
+#                 self.call_calib = False
+#                 self.start_planning = True
+#                 self.notification = 'Calibration Over'
+#                 self.calib_turn_number = 0
+#                 self.command['inference'] = True
+#                 # self.current_waypoint_idx = 1
+#         # Path Following Phase (from auto_fruit_search.py)
+#         elif self.run_path:
+#             #try
+#             lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
 
-            if len(lms) == 0:
-                self.lost_count +=1
-                if self.lost_count > 100:
-                    self.call_calib=True
-                    self.lost_count=0
+#             if len(lms) == 0:
+#                 self.lost_count +=1
+#                 if self.lost_count > 100:
+#                     self.call_calib=True
+#                     self.lost_count=0
 
-            waypoint = self.path[self.current_waypoint_idx]  
-            angle_thresh = 0.05       
-            dist_thresh = 0.05  
-            if len(self.path) > 3:
-                print('Driving to :', waypoint)
-                x_r, y_r, theta_r = self.ekf.robot.state
-                angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-                dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-                if abs(angle_diff) >= angle_thresh:
-                    angular_velocity = 1 if angle_diff > 0 else -1
-                    self.command['motion'] = [0, angular_velocity]
-                elif dist_diff >= dist_thresh:
-                    self.command['motion'] = [1, 0]
-                else:
-                    self.current_waypoint_idx += 1                
+#             waypoint = self.path[self.current_waypoint_idx]  
+#             angle_thresh = 0.05       
+#             dist_thresh = 0.05  
+#             if len(self.path) > 3:
+#                 print('Driving to :', waypoint)
+#                 x_r, y_r, theta_r = self.ekf.robot.state
+#                 angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+#                 dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+#                 if abs(angle_diff) >= angle_thresh:
+#                     angular_velocity = 1 if angle_diff > 0 else -1
+#                     self.command['motion'] = [0, angular_velocity]
+#                 elif dist_diff >= dist_thresh:
+#                     self.command['motion'] = [1, 0]
+#                 else:
+#                     self.current_waypoint_idx += 1                
                     
-                if self.current_waypoint_idx == len(self.path)-2:
-                    self.at_goal = True
-                    self.run_path = False
-                    self.call_calib = True
-                    self.command['inference'] = False 
-            else:
-                self.at_goal = True
-                # lv, rv, dt = 0, 0, 0
+#                 if self.current_waypoint_idx == len(self.path)-2:
+#                     self.at_goal = True
+#                     self.run_path = False
+#                     self.call_calib = True
+#                     self.command['inference'] = False 
+#             else:
+#                 self.at_goal = True
+#                 # lv, rv, dt = 0, 0, 0
                 
-            if self.at_goal:
-                self.at_goal = False
-                self.goal_num += 1
-                self.run_path = False
-                self.arrived_goal.append(self.path[-1])
-                self.notification = 'Arrived at Goal {}'.format(self.goal_num)
-                operate.save_image()
-                time.sleep(5)
-                self.nextgoal = True
-                self.call_calib = True
+#             if self.at_goal:
+#                 self.at_goal = False
+#                 self.goal_num += 1
+#                 self.run_path = False
+#                 self.arrived_goal.append(self.path[-1])
+#                 self.notification = 'Arrived at Goal {}'.format(self.goal_num)
+#                 operate.save_image()
+#                 time.sleep(5)
+#                 self.nextgoal = True
+#                 self.call_calib = True
 
 
 
@@ -640,20 +640,20 @@ if __name__ == "__main__":
         # print(planned)
         
         while True:
-            input_waypoint_x = input("Input x coord")
-            input_waypoint_y = input("Input y coord")
+            input_waypoint_x = input("Input x coord:")
+            input_waypoint_y = input("Input y coord:")
             waypoint = [input_waypoint_x, input_waypoint_y]
 
-            dist = get_distance_robot_to_goal(robot_pose,[waypoint[0],waypoint[1],0])
+            dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1],0]))
             while dist > 0.01:
                 dist_fruit = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
-                dist = get_distance_robot_to_goal(robot_pose, [waypoint[0], waypoint[1], 0])
+                dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1], 0]))
                 if dist_fruit < 0.3:
                     break
                 else:
                     if int((time.time() - print_time)) % 2 == 0:
                         print_time = time.time()
-                    print(f"next waypoint:{waypoint[0]:2f}, {waypoint[1]:2f}")
+                    print(f"next waypoint:{float(waypoint[0]):2f}, {float(waypoint[1]):2f}")
                     operate.drive_to_point(waypoint)
 
                 operate.update_keyboard()

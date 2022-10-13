@@ -9,11 +9,12 @@ def get_distance_robot_to_goal(robot_state=np.zeros(3), goal=np.zeros(3)):
 
 	if goal.shape[0] < 3:
 		goal = np.hstack((goal, np.array([0])))
-
+	
 	x_goal, y_goal,_ = goal
-	x, y,_ = robot_state
-	x_diff = x_goal - x
-	y_diff = y_goal - y
+	x, y, = robot_state
+
+	x_diff = float(x_goal) - float(x)
+	y_diff = float(y_goal) - float(y)
 
 	rho = np.hypot(x_diff, y_diff)
 
