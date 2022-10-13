@@ -4,6 +4,7 @@ import os, sys
 import time
 import argparse
 import json
+from RRT_Support import RRT
 
 
 # import utility functions
@@ -442,63 +443,63 @@ class Operate:
         self.draw(canvas)
     ##########################################
 
-    # def drive_to_point(self, waypoint):
+    def drive_to_point(self, waypoint):
 
-        # threshold_angle = 0.05
+        threshold_angle = 0.05
 
-        # x_r = self.ekf.robot.state[0]
-        # y_r = self.ekf.robot.state[1]
-        # x_w = waypoint[0]
-        # y_w = waypoint[1]
-        # x_diff = x_w - x_r
-        # y_diff = y_w - y_r
-        # theta_r = self.ekf.robot.state[2]
+        x_r = self.ekf.robot.state[0]
+        y_r = self.ekf.robot.state[1]
+        x_w = waypoint[0]
+        y_w = waypoint[1]
+        x_diff = x_w - x_r
+        y_diff = y_w - y_r
+        theta_r = self.ekf.robot.state[2]
 
-        # ## limit theta_r between -pi and pi
+        ## limit theta_r between -pi and pi
 
-        # while (abs(theta_r) > np.pi):
-        #     if theta_r > 0:
-        #         theta_r -= 2 * np.pi
-        #     else:
-        #         theta_r += 2 * np.pi
+        while (abs(theta_r) > np.pi):
+            if theta_r > 0:
+                theta_r -= 2 * np.pi
+            else:
+                theta_r += 2 * np.pi
 
-        # ## in robot frame, how much angle diff between robot and target
-        # theta_diff = np.arctan2(y_diff, x_diff)
+        ## in robot frame, how much angle diff between robot and target
+        theta_diff = np.arctan2(y_diff, x_diff)
 
-        # ## Angle needs to turn = Angle diff from robot - robot pose in world
-        # theta_turn = theta_diff - theta_r
+        ## Angle needs to turn = Angle diff from robot - robot pose in world
+        theta_turn = theta_diff - theta_r
 
-        # if int((time.time() - print_time)) % 2 == 0:
-        #     print("Theta to turn: " + str(theta_turn)[1:6] + " and current robot pose: " + str(theta_r)[1:6])
-        # ## depending on which side of the robot the waypoint is on, orient properly
-        # ## if you are oriented properly, drive forward to waypoint
-        # if abs(theta_turn) >= threshold_angle:
-        #     if y_diff >= 0:
-        #         if theta_turn > 0:
-        #             self.command['motion'] = [0, 1]
-        #         else:
-        #             self.command['motion'] = [0, -1]
-        #     else:
-        #         if theta_turn <= 0:
-        #             self.command['motion'] = [0, -1]
-        #         else:
-        #             self.command['motion'] = [0, 1]
-        # else:
-        #     self.command['motion'] = [1, 0]
+        if int((time.time() - print_time)) % 2 == 0:
+            print("Theta to turn: " + str(theta_turn)[1:6] + " and current robot pose: " + str(theta_r)[1:6])
+        ## depending on which side of the robot the waypoint is on, orient properly
+        ## if you are oriented properly, drive forward to waypoint
+        if abs(theta_turn) >= threshold_angle:
+            if y_diff >= 0:
+                if theta_turn > 0:
+                    self.command['motion'] = [0, 1]
+                else:
+                    self.command['motion'] = [0, -1]
+            else:
+                if theta_turn <= 0:
+                    self.command['motion'] = [0, -1]
+                else:
+                    self.command['motion'] = [0, 1]
+        else:
+            self.command['motion'] = [1, 0]
 
-    # def reset_pose_angle(self):
+    def reset_pose_angle(self):
 
-    #     theta_r = self.ekf.robot.state[2]
-    #     while (abs(theta_r) > np.pi):
-    #         if theta_r > 0:
-    #             theta_r -= 2 * np.pi
-    #         else:
-    #             theta_r += 2 * np.pi
+        theta_r = self.ekf.robot.state[2]
+        while (abs(theta_r) > np.pi):
+            if theta_r > 0:
+                theta_r -= 2 * np.pi
+            else:
+                theta_r += 2 * np.pi
 
-    #     if theta_r < 0:
-    #         self.command['motion'] = [0, 1]
-    #     else:
-    #         self.command['motion'] = [0, -1]
+        if theta_r < 0:
+            self.command['motion'] = [0, 1]
+        else:
+            self.command['motion'] = [0, -1]
 
 
 
@@ -572,6 +573,9 @@ class Operate:
 
 if __name__ == "__main__":
 
+    global print_time
+    print_time = time.time()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
@@ -622,26 +626,44 @@ if __name__ == "__main__":
     operate.goals = search_list_pose
     # operate.import_markers(aruco_true_pos)
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    RRT_res = 0.01
+    RRT_expand = 0.05
+    obs = RRT.get_obstacles(fruit_true_pos, aruco_true_pos)
+    for i in range(len(search_list_pose)):
+        reset_pose_angle = True
 
-    while True:
-        operate.update_keyboard()
-        operate.take_pic()
+        state = operate.ekf.robot.state[:2].squeeze()
+        robot_pose = [state[0],state[1]]
 
-        operate.detect_target()
-        if operate.start_planning:
-            path_planning(operate)
-        ##########################################
-        if operate.run_path or operate.call_calib:
-            operate.navigate_path()
+        path = RRT.RRTC(start=robot_pose,goal=search_list_pose[i],obstacle_list=obs,width=3,height=3,expand_dis=RRT_expand,path_resolution=RRT_res,max_points=500)
 
-        drive_meas = operate.control()
-        operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
-        operate.ekf.taglist = tag_list
-        operate.ekf.markers = operate.markers
-        operate.update_slam(drive_meas)
-        operate.record_data()
-        operate.save_image()
-        operate.detect_target()
-        # visualise
-        operate.draw(canvas)
-        pygame.display.update()
+        for waypoint in path:
+
+            dist = get_distance_robot_to_goal(robot_pose,[waypoint[0],waypoint[1],0])
+            while dist > 0.01:
+                dist_fruit = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
+                dist = get_distance_robot_to_goal(robot_pose, [waypoint[0], waypoint[1], 0])
+                if dist_fruit < 0.3:
+                    break
+                else:
+                    if int((time.time() - print_time)) % 2 == 0:
+                        print_time = time.time()
+                    print(f"next waypoint:{waypoint[0]:2f}, {waypoint[1]:2f}")
+                    operate.drive_to_point(waypoint)
+
+                operate.update_keyboard()
+                operate.take_pic()
+
+                operate.detect_target()
+
+                drive_meas = operate.control()
+                operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
+                operate.ekf.taglist = tag_list
+                operate.ekf.markers = operate.markers
+                operate.update_slam(drive_meas)
+                operate.record_data()
+                operate.save_image()
+                operate.detect_target()
+                # visualise
+                operate.draw(canvas)
+                pygame.display.update()

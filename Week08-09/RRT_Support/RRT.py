@@ -4,6 +4,8 @@ import random
 import os
 import math
 
+from ece4078.Week03.Obstacle import Circle
+
 
 class RRTC:
     """
@@ -219,3 +221,15 @@ class RRTC:
         d = math.hypot(dx, dy)
         theta = math.atan2(dy, dx)
         return d, theta
+
+def get_obstacles(fruit_true_pos, aruco_true_pos):
+    obstacles = []
+    fruit_safety = 0.2
+    aruco_safety = 0.2
+    for fruit in fruit_true_pos:
+        # obstacles.append(Rectangle((fruit[0],fruit[1]),fruit_safety,fruit_safety))
+        obstacles.append(Circle(fruit[0],fruit[1],fruit_safety))
+    for arucos in aruco_true_pos:
+        # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
+        obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
+    return obstacles
