@@ -224,7 +224,7 @@ def path_planning(cat, show_animation=True):
     gy = cat.goals[cat.goal_num][1]  # [m]
     grid_size = 0.1  # [m]
     robot_radius = 0.17  # [m]
-    aruco_size = 0.20/2 # [m]
+    aruco_size = 0.1/2 # [m]
 
     # define map boundary
     ox, oy = [], []
@@ -327,5 +327,6 @@ def path_planning(cat, show_animation=True):
     cat.start_planning = False
     cat.run_path = True
 
+    print("Waypoints")
     print(cat.path)
     print(' ')

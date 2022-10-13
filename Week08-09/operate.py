@@ -82,7 +82,7 @@ class Operate:
         self.aruco_pos = aruco_pos          # Position of Aruco Markers
         self.path = None                    # Path for Fruit Search
         self.run_path = False               # Flag for running Planned Path
-        self.current_waypoint_idx = 1       # Index of current waypoint
+        self.current_waypoint_idx = 0       # Index of current waypoint
         self.turning = True                 # Flag for Robot Turning
         self.driving = False
         self.call_calib = False             # Flag for Calibration (Wheel and Baseline)
@@ -110,6 +110,7 @@ class Operate:
         # initialise images
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
+        self.detetcor_output = np.zeros([240,320], dtype=np.uint8)
         ## Kelvin Added ##########################
         # initialize YOLO
         if self.ckpt == "":
@@ -302,6 +303,12 @@ class Operate:
     ## Kelvin Added ##########################
     # Path navigation 
     def navigate_path(self):
+
+        tick = 20
+        turning_tick = 20
+        scale = self.ekf.robot.wheels_scale
+        baseline = self.ekf.robot.wheels_width
+        
         # Position Calibration Phase
         # Turn 8 times to calibrate robot's position
         if self.call_calib:
@@ -325,70 +332,62 @@ class Operate:
                 # self.current_waypoint_idx = 1
         # Path Following Phase (from auto_fruit_search.py)
         elif self.run_path:
-            #try
-            lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+            try:
+                waypoint = self.path[self.current_waypoint_idx]           
+                if len(self.path) > 3:
+                    print('Driving to :', waypoint)
 
-            if len(lms) == 0:
-                self.lost_count +=1
-                if self.lost_count > 1:
-                    self.call_calib=True
-                    self.lost_count=0
+                    if self.turning:
+                        angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+                        dt = (abs(angle_diff)*baseline) / (2*turning_tick*scale)
+                        print("Turning for {:.5f} seconds".format(dt))
 
-            waypoint = self.path[self.current_waypoint_idx]  
-            angle_thresh = 0.05       
-            dist_thresh = 0.05  
-            if len(self.path) > 3:
-                print('Driving to :', waypoint)
-                x_r, y_r, theta_r = self.ekf.robot.state
-                angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-                dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
-                if angle_diff >= angle_thresh:
-                    self.turning = 1
-                elif dist_diff >= dist_thresh:
-                    self.turning = 0
-                    self.driving = 1
+                        angular_velocity = 1 if angle_diff > 0 else -1
+                        lv, rv = self.pibot.set_velocity([0, angular_velocity], turning_tick=turning_tick, time=dt-0.1)            
+                        print("EKF state: ")
+                        print(self.ekf.get_state_vector())
+                    else:
+                        dist_diff = get_distance_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+
+                        dt = (1.0 / (scale * tick)) * dist_diff
+                        print("Driving for {:.5f} seconds".format(dt))
+                        lv, rv = self.pibot.set_velocity([1, 0], tick=tick, time=dt-0.2)
+                        print("EKF state: ")
+                        print(self.ekf.get_state_vector())
+                        print("Arrived at [{}, {}]\n".format(waypoint[0], waypoint[1]))
+                        self.current_waypoint_idx += 1
+                        
+
+                    if self.current_waypoint_idx == len(self.path)-2:
+                        self.at_goal = True
+                        self.run_path = False
+                        self.call_calib = True
+                        self.command['inference'] = False 
                 else:
-                    self.current_waypoint_idx += 1
-                    self.turning = 0
-                    self.driving = 0
-
-                if self.turning:
-                    angular_velocity = 1 if angle_diff > 0 else -1
-                    self.command['motion'] = [0, angular_velocity]
-
-                elif self.driving:
-                    self.command['motion'] = [1, 0]
-                    
-                if self.current_waypoint_idx == len(self.path)-2:
                     self.at_goal = True
+                    lv, rv, dt = 0, 0, 0
+                    
+                if self.at_goal:
+                    self.at_goal = False
+                    self.goal_num += 1
                     self.run_path = False
+                    self.arrived_goal.append(self.path[-1])
+                    self.notification = 'Arrived at Goal {}'.format(self.goal_num)
+                    operate.save_image()
+                    time.sleep(10)
+                    self.nextgoal = True
                     self.call_calib = True
-                    self.command['inference'] = False 
-            else:
-                self.at_goal = True
-                # lv, rv, dt = 0, 0, 0
-                
-            if self.at_goal:
-                self.at_goal = False
-                self.goal_num += 1
+
+                self.turning = not self.turning
+            except:
+                self.unknown_obstacles = {}
+                self.current_waypoint_idx = 1
+                self.command['inference'] = True
+                self.start_planning = True
                 self.run_path = False
-                self.arrived_goal.append(self.path[-1])
-                self.notification = 'Arrived at Goal {}'.format(self.goal_num)
-                operate.save_image()
-                time.sleep(5)
-                self.nextgoal = True
-                self.call_calib = True
+                self.notification = 'No path found, replanning...'
 
-            # self.turning = not self.turning
-            # except:
-            #     self.unknown_obstacles = {}
-            #     self.current_waypoint_idx = 1
-            #     self.command['inference'] = True
-            #     self.start_planning = True
-            #     self.run_path = False
-            #     self.notification = 'No path found, replanning...'
-
-            #     return 0, 0, 0
+                return 0, 0, 0
         
         # return lv, rv, dt
     ##########################################
@@ -452,6 +451,8 @@ class Operate:
                         self.notification = 'SLAM is running'
                         self.ekf_on = True
                         self.ekf.load_map()
+                        print("EKF state: ")
+                        print(self.ekf.get_state_vector())
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
