@@ -38,6 +38,7 @@ class aruco_detector:
                 seen_ids.append(idi)
 
             lm_tvecs = tvecs[ids==idi].T
+            # print(f"{lm_tvecs[2,:]} + {-lm_tvecs[0,:]}")
             lm_bff2d = np.block([[lm_tvecs[2,:]],[-lm_tvecs[0,:]]])
             lm_bff2d = np.mean(lm_bff2d, axis=1).reshape(-1,1)
 

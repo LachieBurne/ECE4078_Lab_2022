@@ -21,7 +21,7 @@ class EKF:
 
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 0.1
+        self.init_lm_cov = 0.2
         self.robot_init_state = None
         self.lm_pics = []
         for i in range(1, 11):
@@ -37,7 +37,7 @@ class EKF:
         self.taglist = []
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 0.1
+        self.init_lm_cov = 0.2
         self.robot_init_state = None
 
     def number_landmarks(self):
@@ -152,7 +152,7 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
         Q = np.zeros((n,n))
-        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 1e-4*np.eye(3)
+        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) + 1e-2 * np.eye(3) # np.array([[3e-4, 0, 0],[0, 3e-4, 0],[0, 0, 0.0594]])
         # print(f"[ekf][predict_covariance][Q]\n")
         # print(f"{Q[0]}")
         # print(f"{Q[1]}")

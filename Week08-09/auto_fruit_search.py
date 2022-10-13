@@ -132,53 +132,46 @@ def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
     x_diff, y_diff = x_diff, y_diff
 
     distance_to_waypoint = np.hypot(x_diff, y_diff)
-    angle_to_waypoint = np.arctan2(y_diff, x_diff)
+    angle_to_waypoint =  np.arctan2(y_diff, x_diff) # - robot_pose[2]
     print(f"[drive_to_point][angle_to_waypoint] {angle_to_waypoint}")
-    turning_angle = angle_to_waypoint - robot_pose[-1]
-    angular_velocity = 1 if turning_angle > 0 else -1
+    turning_angle = angle_to_waypoint - robot_pose[2]
+    angular_velocity = 2 if turning_angle > 0 else -2
 
     # turn towards the waypoint
-    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick)# replace with your calculation
+    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # * 1.811 * 0.9729 * 1.056 * 0.9413# replace with your calculation
     print("Turning for {:.2f} seconds".format(turn_time))
-    operate.command['motion'] = [0, angular_velocity*2] if turn_time!=0 else [0, 0]
+    operate.command['motion'] = [0, angular_velocity] if turn_time!=0 else [0, 0]
     done = False
     then = time.time()
-    while not done:
-        robot_pose = get_robot_pose(operate)
-        if operate.control_clock - then > turn_time:
-            done = True
-    # wait a bit to update position if looking at marker
-    if not operate.aruco_det.detect_marker_positions(operate.img):
-        pass
-    else:
-        operate.command['motion'] = [0,0]
-        then = time.time()
-        while time.time() - then < 5:
-            robot_pose = get_robot_pose(operate)
-
-    # l_vel, r_vel = ppi.set_velocity(command, turning_tick=turning_tick, time=turn_time)
-
-    # Uses the right and left velocities to estimate the position of the robot with ekf.predict()
+    lv, rv = operate.pibot.set_velocity(operate.command['motion']) # robot_pose = get_robot_pose(operate).flatten()
     
-    # print(f"Rotated pose: {robot_pose}") 
+    resolution = 3
+    dt = turn_time/resolution
+    for i in range(resolution):
+        robot_pose = get_robot_pose(operate, dt).flatten()
+    operate.command['motion'] = [0,0]
+
+    # # wait a bit to update position if looking at marker
+    # marker_list, img = operate.aruco_det.detect_marker_positions(operate.img)
+    # if not marker_list:
+    #     pass
+    # else:
+    #     operate.command['motion'] = [0,0]
+    #     then = time.time()
+    #     while time.time() - then < 5:
+    #         robot_pose = get_robot_pose(operate).flatten()
+    print(f"Rotated pose: {robot_pose}") 
     # after turning, drive straight to the waypoint
     drive_time = (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
     print("Driving for {:.2f} seconds".format(drive_time))
-    operate.command['motion'] = [2, 0] if drive_time != 0 else [0, 0]
+    operate.command['motion'] = [1, 0] if drive_time != 0 else [0, 0]
     done = False
     then = time.time()
-    while not done:
-        robot_pose = get_robot_pose(operate)
-        if operate.control_clock - then > drive_time:
-            done = True
-    # wait a bit to update position if looking at marker
-    if not operate.aruco_det.detect_marker_positions(operate.img):
-        pass
-    else:
-        operate.command['motion'] = [0,0]
-        then = time.time()
-        while time.time() - then < 1:
-            robot_pose = get_robot_pose(operate)
+    resolution = 3
+    dt = drive_time/resolution
+    for i in range(resolution):
+        robot_pose = get_robot_pose(operate, dt).flatten()
+    operate.command['motion'] = [0,0]
 
     # l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
 
@@ -186,15 +179,17 @@ def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
 
     print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1])) 
     print(f"Translated pose: {robot_pose}") 
-    return robot_pose.T[0]  
+    return robot_pose
 
 
-def get_robot_pose(operate:Operate):
+def get_robot_pose(operate:Operate, dt=None):
     ####################################################
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
-    operate.take_pic()
-    drive_meas = operate.control()
+    previous_img = operate.img
+    while np.array_equal(previous_img, operate.img):
+        operate.take_pic()
+    drive_meas = operate.control(dt)
     operate.update_slam(drive_meas)
     operate.record_data()
     operate.save_image()
@@ -269,7 +264,7 @@ if __name__ == "__main__":
     # NOTE: This will not work for future milestones
     measurements = []
     for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i+1, covariance=1e-1))
+        measurements.append(measure.Marker(position, tag=i+1, covariance=1e-2*np.eye(2)))# covariance=1e-2*np.eye(2)))
         print(f"{i}, {position}")
     # Pass all these markers into the EKF
     print(f"[__main__][measurement.tags]\n{list(map(lambda x: x.tag, measurements))}\n")
@@ -316,15 +311,7 @@ if __name__ == "__main__":
     operate.ekf = ekf
 
     operate.run_slam()
-    then = time.time()
-    while time.time() - then < 1:
-            operate.take_pic()
-            operate.record_data()
-            operate.save_image()
-            operate.detect_target()
-    # visualise
-    operate.draw(canvas)
-    pygame.display.update()
+    get_robot_pose(operate)
     
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
@@ -352,11 +339,8 @@ if __name__ == "__main__":
         
         robot_pose = drive_to_point(waypoint, robot_pose, operate, sim=args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
         then = time.time()
-        while time.time() - then < 1:
-            operate.take_pic()
-            operate.record_data()
-            operate.save_image()
-            operate.detect_target()
+        while time.time() - then < 3:
+            pass # get_robot_pose(operate)
         print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
         # exit

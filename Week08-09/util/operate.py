@@ -82,7 +82,8 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
     # wheel control
-    def control(self):       
+    def control(self, dt):
+        incremental_drive = True if dt is not None else False
         if self.args.play_data:
             lv, rv = self.pibot.set_velocity()            
         else:
@@ -90,8 +91,11 @@ class Operate:
                 self.command['motion'])
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
-        dt = time.time() - self.control_clock
+        if dt is None:
+            dt = time.time() - self.control_clock
         drive_meas = measure.Drive(lv, rv, dt)
+        if incremental_drive:
+            self.pibot.set_velocity(self.command['motion'], time=dt)
         self.control_clock = time.time()
         return drive_meas
     # camera control
