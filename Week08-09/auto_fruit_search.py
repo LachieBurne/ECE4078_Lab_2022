@@ -105,6 +105,55 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos):
 # additional improvements:
 # you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
 # try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
+
+def calculate_turning_angle(robot_pose, waypoint):
+        x_diff = waypoint[0] - robot_pose[0]
+        y_diff = waypoint[1] - robot_pose[1]
+        x_diff, y_diff = x_diff, y_diff
+
+        
+        angle_to_waypoint =  np.arctan2(y_diff, x_diff) # - robot_pose[2]
+        turning_angle = angle_to_waypoint - robot_pose[2]
+        print(f"[calculate_turning_angle][turning_angle] {turning_angle}")
+        return turning_angle
+    
+def calculate_turn_time(turning_angle, baseline, scale, turning_tick=5):
+    return (abs(turning_angle) * baseline) / (2 * scale * turning_tick)
+
+def calculate_drive_time(scale, distance_to_waypoint, tick=20):
+    return (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
+
+def calculate_distance_to_waypoint(robot_pose, waypoint):
+        x_diff = waypoint[0] - robot_pose[0]
+        y_diff = waypoint[1] - robot_pose[1]
+        x_diff, y_diff = x_diff, y_diff
+        distance_to_waypoint = np.hypot(x_diff, y_diff)
+        print(f"[calculate_distance_to_waypoint][distance_to_waypoint] {distance_to_waypoint}")
+        return distance_to_waypoint
+
+def partly_turn(operate, turn_time, resolution=2):
+    done = False
+    then = time.time()
+    while not done:
+        drive_robot(operate)
+        if time.time() - then > turn_time/resolution*2:
+            done = True
+            lv, rv = operate.pibot.set_velocity(operate.command['motion'])
+            drive_meas = measure.Drive(lv, rv, dt=turn_time/resolution)
+            operate.update_slam(drive_meas)
+    return operate.ekf.robot.state.flatten()
+
+def partly_drive(operate, drive_time, resolution=10):
+    done = False
+    then = time.time()
+    while not done:
+        drive_robot(operate)
+        if time.time() - then > drive_time/resolution*2:
+            done = True
+            lv, rv = operate.pibot.set_velocity(operate.command['motion'])
+            drive_meas = measure.Drive(lv, rv, dt=drive_time/resolution)
+            operate.update_slam(drive_meas)
+    return operate.ekf.robot.state.flatten()
 def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
     # imports camera / wheel calibration parameters 
     if sim:
@@ -131,49 +180,44 @@ def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
     y_diff = waypoint[1] - robot_pose[1]
     x_diff, y_diff = x_diff, y_diff
 
-    distance_to_waypoint = np.hypot(x_diff, y_diff)
-    angle_to_waypoint =  np.arctan2(y_diff, x_diff) # - robot_pose[2]
-    print(f"[drive_to_point][angle_to_waypoint] {angle_to_waypoint}")
-    turning_angle = angle_to_waypoint - robot_pose[2]
+    turning_angle  = calculate_turning_angle(robot_pose, waypoint)
     angular_velocity = 2 if turning_angle > 0 else -2
 
     # turn towards the waypoint
-    turn_time = (abs(turning_angle) * baseline) / (2 * scale * turning_tick) # * 1.811 * 0.9729 * 1.056 * 0.9413# replace with your calculation
+    turn_time = calculate_turn_time(turning_angle, baseline, scale)
     print("Turning for {:.2f} seconds".format(turn_time))
     operate.command['motion'] = [0, angular_velocity] if turn_time!=0 else [0, 0]
     done = False
-    then = time.time()
-    lv, rv = operate.pibot.set_velocity(operate.command['motion']) # robot_pose = get_robot_pose(operate).flatten()
-    
-    resolution = 3
-    dt = turn_time/resolution
-    for i in range(resolution):
+    dt = calculate_turn_time(np.pi/180*5, baseline, scale)
+    while not done:
         robot_pose = get_robot_pose(operate, dt).flatten()
+        turning_angle = calculate_turning_angle(robot_pose, waypoint)
+        if abs(turning_angle) < np.pi/180*10:
+            done = True
     operate.command['motion'] = [0,0]
 
-    # # wait a bit to update position if looking at marker
-    # marker_list, img = operate.aruco_det.detect_marker_positions(operate.img)
-    # if not marker_list:
-    #     pass
-    # else:
-    #     operate.command['motion'] = [0,0]
-    #     then = time.time()
-    #     while time.time() - then < 5:
-    #         robot_pose = get_robot_pose(operate).flatten()
     print(f"Rotated pose: {robot_pose}") 
     # after turning, drive straight to the waypoint
-    drive_time = (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
+    distance_to_waypoint = calculate_distance_to_waypoint(robot_pose, waypoint)
+    drive_time = calculate_drive_time(scale, distance_to_waypoint)
     print("Driving for {:.2f} seconds".format(drive_time))
     operate.command['motion'] = [1, 0] if drive_time != 0 else [0, 0]
     done = False
     then = time.time()
-    resolution = 3
-    dt = drive_time/resolution
-    for i in range(resolution):
-        robot_pose = get_robot_pose(operate, dt).flatten()
+    while not done:
+        robot_pose = get_robot_pose(operate).flatten()
+        if time.time() - then > drive_time*2:
+            done = True
     operate.command['motion'] = [0,0]
 
-    # l_vel, r_vel = ppi.set_velocity(command, tick=tick, time=drive_time)
+    # done = False
+    # dt = calculate_drive_time(scale, 0.05)
+    # while not done:
+    #     robot_pose = get_robot_pose(operate, dt).flatten()
+    #     turning_angle = calculate_distance_to_waypoint(robot_pose, waypoint)
+    #     if distance_to_waypoint < 0.1:
+    #         done = True
+    operate.command['motion'] = [0,0]
 
     ####################################################
 
@@ -187,8 +231,7 @@ def get_robot_pose(operate:Operate, dt=None):
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
     previous_img = operate.img
-    while np.array_equal(previous_img, operate.img):
-        operate.take_pic()
+    operate.take_pic()
     drive_meas = operate.control(dt)
     operate.update_slam(drive_meas)
     operate.record_data()
@@ -200,7 +243,7 @@ def get_robot_pose(operate:Operate, dt=None):
 
     # update the robot pose [x,y,theta]
 
-    robot_pose = operate.ekf.robot.state # replace with your calculation
+    robot_pose = operate.ekf.robot.state.flatten() # replace with your calculation
     ####################################################
 
     return robot_pose
@@ -264,7 +307,7 @@ if __name__ == "__main__":
     # NOTE: This will not work for future milestones
     measurements = []
     for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i+1, covariance=1e-2*np.eye(2)))# covariance=1e-2*np.eye(2)))
+        measurements.append(measure.Marker(position, tag=i+1, covariance=0*np.eye(2)))# covariance=1e-2*np.eye(2)))
         print(f"{i}, {position}")
     # Pass all these markers into the EKF
     print(f"[__main__][measurement.tags]\n{list(map(lambda x: x.tag, measurements))}\n")
