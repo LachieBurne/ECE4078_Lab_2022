@@ -92,6 +92,8 @@ class Operate:
         self.at_goal = False                # Flag for being at a Waypoint/Goal
         self.nextgoal = False               # Flag for travelling to next Waypoint/Goal
 
+        self.lost_count = 0
+
         # Weight File for YOLO
         if args.using_sim:
             self.ckpt = 'final_weights/best_sim.pt'
@@ -145,6 +147,9 @@ class Operate:
 
     # SLAM with ARUCO markers       
     def update_slam(self, drive_meas):
+        previous_img = self.img
+        while np.array_equal(previous_img, self.img):
+            self.take_pic()
         lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
         if self.request_recover_robot:
             is_success = self.ekf.recover_from_pause(lms)
@@ -316,24 +321,47 @@ class Operate:
             if self.calib_turn_number == 0:
                 self.notification = "Calibration Started"
 
-            dt = (abs(angle_diff)*baseline) / (2 * turning_tick * scale )
-       
-            lv, rv = self.pibot.set_velocity([0, 2], turning_tick=turning_tick, time=dt)
+            dt = (abs(angle_diff)*baseline) / (2 * turning_tick * scale)
+
+            lv, rv = self.pibot.set_velocity([0, -2], turning_tick=turning_tick, time=dt)
+
+            previous_img = self.img
+            while np.array_equal(previous_img, self.img):
+                self.take_pic()
+
+            lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+            print(len(lms))
+            if len(lms) >= 2:
+                self.ekf.recover_from_pause(lms)
+                self.calib_turn_number = 7
 
             self.calib_turn_number += 1     
-            if self.calib_turn_number == 3:
+            if self.calib_turn_number == 8:
                 self.call_calib = False
                 self.start_planning = True
                 self.notification = 'Calibration Over'
                 self.calib_turn_number = 0
                 self.command['inference'] = True
-                self.current_waypoint_idx = 1
+                # self.current_waypoint_idx = 1
         # Path Following Phase (from auto_fruit_search.py)
         elif self.run_path:
-            #try:
-            waypoint = self.path[self.current_waypoint_idx]           
+            #try
+            lms, self.aruco_img = self.aruco_det.detect_marker_positions(self.img)
+            print(len(lms))
+            if len(lms) == 0:
+                self.lost_count +=1
+                if self.lost_count > 1:
+                    self.call_calib=True
+                    self.lost_count=0
+
+            waypoint = self.path[self.current_waypoint_idx]  
+            # angle_thresh = 0.05         
             if len(self.path) > 3:
-                print('Driving to :', waypoint)
+                # print('Driving to :', waypoint)
+                # x_r, y_r, theta_r = self.ekf.robot.state
+                # angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
+                # if angle_diff >= angle_thresh:
+                #     self.turning = 1
 
                 if self.turning:
                     angle_diff = get_angle_robot_to_goal(self.ekf.robot.state.squeeze(), waypoint)
@@ -372,7 +400,7 @@ class Operate:
                 self.arrived_goal.append(self.path[-1])
                 self.notification = 'Arrived at Goal {}'.format(self.goal_num)
                 operate.save_image()
-                time.sleep(10)
+                time.sleep(5)
                 self.nextgoal = True
                 self.call_calib = True
 
