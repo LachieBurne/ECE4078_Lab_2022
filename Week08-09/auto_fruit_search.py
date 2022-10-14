@@ -120,7 +120,7 @@ def calculate_turning_angle(robot_pose, waypoint):
 def calculate_turn_time(turning_angle, baseline, scale, turning_tick=5):
     return (abs(turning_angle) * baseline) / (2 * scale * turning_tick)
 
-def calculate_drive_time(scale, distance_to_waypoint, tick=20):
+def calculate_drive_time(distance_to_waypoint, scale, tick=20):
     return (1.0 / (scale * tick)) * distance_to_waypoint # replace with your calculation
 
 def calculate_distance_to_waypoint(robot_pose, waypoint):
@@ -135,28 +135,66 @@ def partly_turn(operate, turn_time, resolution=2):
     done = False
     then = time.time()
     while not done:
-        drive_robot(operate)
-        if time.time() - then > turn_time/resolution*2:
+        robot_pose = get_robot_pose(operate)
+        termination_condition = time.time() - then > turn_time/resolution*2 if SIM else time.time() - then > turn_time/resolution
+        if termination_condition:
             done = True
             lv, rv = operate.pibot.set_velocity(operate.command['motion'])
             drive_meas = measure.Drive(lv, rv, dt=turn_time/resolution)
             operate.update_slam(drive_meas)
-    return operate.ekf.robot.state.flatten()
+    return robot_pose
 
-def partly_drive(operate, drive_time, resolution=10):
+def partly_drive(operate, drive_time, resolution=2):
     done = False
     then = time.time()
     while not done:
-        drive_robot(operate)
-        if time.time() - then > drive_time/resolution*2:
+        robot_pose = get_robot_pose(operate)
+        termination_condition = time.time() - then > drive_time/resolution*2 if SIM else time.time() - then > drive_time/resolution
+        if termination_condition:
             done = True
             lv, rv = operate.pibot.set_velocity(operate.command['motion'])
             drive_meas = measure.Drive(lv, rv, dt=drive_time/resolution)
             operate.update_slam(drive_meas)
-    return operate.ekf.robot.state.flatten()
-def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
+    return robot_pose
+def drive_to_point(operate, scale, baseline, waypoint):
+    print(f"Driving to waypoint...")
+    done = False
+    dt = calculate_drive_time(0.09, scale/2) if SIM else calculate_drive_time(0.09, scale)
+    operate.command['motion'] = [1,0]
+    while not done:
+        operate.command['motion'] = [1,0]
+        robot_pose = get_robot_pose(operate, dt)
+        operate.pibot.set_velocity([0,0])
+        distance_to_waypoint = calculate_distance_to_waypoint(robot_pose, waypoint)
+        turning_angle = calculate_turning_angle(robot_pose, waypoint)
+        if distance_to_waypoint < 0.1:
+            done = True
+        elif abs(turning_angle) > np.pi/180*10:
+            sign = 1 if turning_angle > 0 else -1
+            operate.command['motion'] = [0, 2*sign] if turning_angle > 0 else [0, 0]
+            robot_pose = turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle)
+    operate.command['motion'] = [0,0]
+    print(f"Done...")
+    return robot_pose
+def turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle):
+        print(f"Turning to waypoint...")
+        done = False
+        robot_pose = operate.ekf.robot.state.flatten()
+        dt = calculate_turn_time(np.pi/180*10, baseline, scale)
+        while not done:
+            operate.command['motion'] = [0, 2*sign] if abs(turning_angle) > 0 else [0, 0]
+            robot_pose = get_robot_pose(operate, dt)
+            operate.pibot.set_velocity([0,0])
+            turning_angle = calculate_turning_angle(robot_pose, waypoint)/2
+            sign = 1 if turning_angle > 0 else -1
+            if abs(turning_angle) < np.pi/180*5:
+                done = True
+        operate.command['motion'] = [0,0]
+        print(f"Done...")
+        return robot_pose
+def move_to_waypoint(waypoint, robot_pose, operate:Operate, ip):
     # imports camera / wheel calibration parameters 
-    if sim:
+    if SIM:
         fileS = "calibration/param/scale_sim.txt"
         scale = np.loadtxt(fileS, delimiter=',')
         fileB = "calibration/param/baseline_sim.txt"
@@ -172,52 +210,16 @@ def drive_to_point(waypoint, robot_pose, operate:Operate, sim=False):
     # One simple strategy is to first turn on the spot facing the waypoint,
     # then drive straight to the way point
 
-    tick = 20 # tick
-    turning_tick = 5
-
-    # Robot_pose is a 3*1 matrix
-    x_diff = waypoint[0] - robot_pose[0]
-    y_diff = waypoint[1] - robot_pose[1]
-    x_diff, y_diff = x_diff, y_diff
+    then = time.time()
+    while time.time() - then < 1*2:
+        robot_pose = get_robot_pose(operate)
 
     turning_angle  = calculate_turning_angle(robot_pose, waypoint)
-    angular_velocity = 2 if turning_angle > 0 else -2
-
-    # turn towards the waypoint
-    turn_time = calculate_turn_time(turning_angle, baseline, scale)
-    print("Turning for {:.2f} seconds".format(turn_time))
-    operate.command['motion'] = [0, angular_velocity] if turn_time!=0 else [0, 0]
-    done = False
-    dt = calculate_turn_time(np.pi/180*5, baseline, scale)
-    while not done:
-        robot_pose = get_robot_pose(operate, dt).flatten()
-        turning_angle = calculate_turning_angle(robot_pose, waypoint)
-        if abs(turning_angle) < np.pi/180*10:
-            done = True
-    operate.command['motion'] = [0,0]
-
-    print(f"Rotated pose: {robot_pose}") 
-    # after turning, drive straight to the waypoint
-    distance_to_waypoint = calculate_distance_to_waypoint(robot_pose, waypoint)
-    drive_time = calculate_drive_time(scale, distance_to_waypoint)
-    print("Driving for {:.2f} seconds".format(drive_time))
-    operate.command['motion'] = [1, 0] if drive_time != 0 else [0, 0]
-    done = False
-    then = time.time()
-    while not done:
-        robot_pose = get_robot_pose(operate).flatten()
-        if time.time() - then > drive_time*2:
-            done = True
-    operate.command['motion'] = [0,0]
-
-    # done = False
-    # dt = calculate_drive_time(scale, 0.05)
-    # while not done:
-    #     robot_pose = get_robot_pose(operate, dt).flatten()
-    #     turning_angle = calculate_distance_to_waypoint(robot_pose, waypoint)
-    #     if distance_to_waypoint < 0.1:
-    #         done = True
-    operate.command['motion'] = [0,0]
+    sign = 1 if turning_angle > 0 else -1
+    operate.command['motion'] = [0, 2*sign] if turning_angle > 0 else [0, 0]
+    
+    robot_pose = turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle)
+    robot_pose = drive_to_point(operate, scale, baseline, waypoint)
 
     ####################################################
 
@@ -230,8 +232,13 @@ def get_robot_pose(operate:Operate, dt=None):
     ####################################################
     # TODO: replace with your codes to estimate the pose of the robot
     # We STRONGLY RECOMMEND you to use your SLAM code from M2 here
-    previous_img = operate.img
-    operate.take_pic()
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            operate.command['motion'] = [0, 0]
+            operate.pibot.set_velocity(operate.command['motion'])
+    
+    for i in range(5):
+        operate.take_pic()
     drive_meas = operate.control(dt)
     operate.update_slam(drive_meas)
     operate.record_data()
@@ -289,8 +296,8 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
     args, _ = parser.parse_known_args()
 
-    print(f"Using simulator = {args.using_sim}")
-
+    print(f"Using simulator={args.using_sim}")
+    SIM = args.using_sim
     ppi = PenguinPi(args.ip,args.port)
 
     # read in the true map
@@ -307,7 +314,7 @@ if __name__ == "__main__":
     # NOTE: This will not work for future milestones
     measurements = []
     for i, position in enumerate(aruco_true_pos):
-        measurements.append(measure.Marker(position, tag=i+1, covariance=0*np.eye(2)))# covariance=1e-2*np.eye(2)))
+        measurements.append(measure.Marker(position, tag=i+1, covariance=0*1e-3*np.eye(2)))
         print(f"{i}, {position}")
     # Pass all these markers into the EKF
     print(f"[__main__][measurement.tags]\n{list(map(lambda x: x.tag, measurements))}\n")
@@ -380,7 +387,7 @@ if __name__ == "__main__":
         # robot drives to the waypoint
         waypoint = [x,y]
         
-        robot_pose = drive_to_point(waypoint, robot_pose, operate, sim=args.using_sim) # Now returns robot_pose and control_clock. Uses control_clock for predict function
+        robot_pose = move_to_waypoint(waypoint, robot_pose, operate, ip=args.ip) # Now returns robot_pose and control_clock. Uses control_clock for predict function
         then = time.time()
         while time.time() - then < 3:
             pass # get_robot_pose(operate)

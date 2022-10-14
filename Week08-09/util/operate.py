@@ -95,7 +95,11 @@ class Operate:
             dt = time.time() - self.control_clock
         drive_meas = measure.Drive(lv, rv, dt)
         if incremental_drive:
-            self.pibot.set_velocity(self.command['motion'], time=dt)
+            if np.array_equal(self.command['motion'], [1,0]) and self.args.ip == 'localhost':
+                self.pibot.set_velocity(self.command['motion'], time=dt/2)
+            else:
+                self.pibot.set_velocity(self.command['motion'], time=dt)
+
         self.control_clock = time.time()
         return drive_meas
     # camera control
