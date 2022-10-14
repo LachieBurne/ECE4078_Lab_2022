@@ -1,16 +1,13 @@
 import numpy as np
 
-def get_distance_robot_to_goal(robot_state=np.zeros(3), goal=np.zeros(3)):
+def get_distance_robot_to_goal(robot_state=np.zeros(2), goal=np.zeros(2)):
 	"""
 	Compute Euclidean distance between the robot and the goal location
 	:param robot_state: 3D vector (x, y, theta) representing the current state of the robot
 	:param goal: 3D Cartesian coordinates of goal location
 	"""
 
-	if goal.shape[0] < 3:
-		goal = np.hstack((goal, np.array([0])))
-	
-	x_goal, y_goal,_ = goal
+	x_goal, y_goal = goal
 	x, y, = robot_state
 
 	x_diff = float(x_goal) - float(x)

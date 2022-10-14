@@ -88,27 +88,8 @@ class Operate:
 
         self.markers = np.zeros((10,2))
         self.tags = []
+        self.start = False
         
-        ## Kelvin Added ##########################
-        # Initialize global variables to flag algorithm phases
-        self.start_planning = False         # Flag for Path Planning to Start
-        self.goals = []                     # Waypoints/Goals for Fruit Search
-        self.unknown_obstacles = {}         # List of Unknown Obstacles (Fruits)
-        self.goal_num = 0                   # Number of fruits to be searched
-        self.path = None                    # Path for Fruit Search
-        self.run_path = False               # Flag for running Planned Path
-        self.current_waypoint_idx = 1       # Index of current waypoint
-        self.turning = True                 # Flag for Robot Turning
-        self.driving = False
-        self.call_calib = False             # Flag for Calibration (Wheel and Baseline)
-        self.check = False              
-        self.calib_turn_number = 0
-        self.threshold = 0.02
-        self.arrived_goal = []              # List of Arrived Waypoints/Goals
-        self.at_goal = False                # Flag for being at a Waypoint/Goal
-        self.nextgoal = False               # Flag for travelling to next Waypoint/Goal
-
-        self.lost_count = 0
 
     # wheel control
     def control(self):
@@ -277,31 +258,17 @@ class Operate:
                 self.command['output'] = True
             # run SLAM
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                n_observed_markers = len(self.ekf.taglist)
-                if n_observed_markers == 0:
-                    if not self.ekf_on:
-                        self.notification = 'SLAM is running'
-                        self.ekf_on = True
-                    else:
-                        self.notification = '> 2 landmarks is required for pausing'
-                elif n_observed_markers < 3:
-                    self.notification = '> 2 landmarks is required for pausing'
-                else:
-                    if not self.ekf_on:
-                        self.request_recover_robot = True
-                    self.ekf_on = not self.ekf_on
-                    if self.ekf_on:
-                        self.notification = 'SLAM is running'
-                    else:
-                        self.notification = 'SLAM is paused'
-                if self.arrived_goal == []:
-                    self.start_planning = True
-                else:
-                    self.command['inference'] = True # force it True so it constantly detects fruits
-                    self.ekf_on = True
-                    self.notification = 'Driving to goal {}'.format(self.goal_num + 1)
-                    print('MOVING TO GOAL {} --------------------------------------------------------'.format(self.goal_num + 1))
-                    self.nextgoal = False
+                pass
+                # self.start = True
+                # if self.arrived_goal == []:
+                #     self.start_planning = True
+                # else:
+                #     self.command['inference'] = True # force it True so it constantly detects fruits
+                #     self.ekf_on = True
+                #     self.notification = 'Driving to goal {}'.format(self.goal_num + 1)
+                #     print('MOVING TO GOAL {} --------------------------------------------------------'.format(self.goal_num + 1))
+                #     self.nextgoal = False
+
             # object detector
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.command['inference'] = True
@@ -382,7 +349,6 @@ class Operate:
         return search_list
 
 
-
     def update_markers(self, temp_tags, markers, tags):
         num = len(temp_tags)
         marker_list = np.zeros((2, num))
@@ -445,7 +411,7 @@ class Operate:
 
     def drive_to_point(self, waypoint):
 
-        threshold_angle = 0.05
+        threshold_angle = 0.1
 
         x_r = self.ekf.robot.state[0]
         y_r = self.ekf.robot.state[1]
@@ -471,8 +437,7 @@ class Operate:
 
         if int((time.time() - print_time)) % 2 == 0:
             print("Theta to turn: " + str(theta_turn)[1:6] + " and current robot pose: " + str(theta_r)[1:6])
-        ## depending on which side of the robot the waypoint is on, orient properly
-        ## if you are oriented properly, drive forward to waypoint
+
         if abs(theta_turn) >= threshold_angle:
             if y_diff >= 0:
                 if theta_turn > 0:
@@ -487,19 +452,6 @@ class Operate:
         else:
             self.command['motion'] = [1, 0]
 
-    def reset_pose_angle(self):
-
-        theta_r = self.ekf.robot.state[2]
-        while (abs(theta_r) > np.pi):
-            if theta_r > 0:
-                theta_r -= 2 * np.pi
-            else:
-                theta_r += 2 * np.pi
-
-        if theta_r < 0:
-            self.command['motion'] = [0, 1]
-        else:
-            self.command['motion'] = [0, -1]
 
 
 
@@ -621,58 +573,77 @@ if __name__ == "__main__":
 
     operate = Operate(args)
 
+    n_observed_markers = len(operate.ekf.taglist)
+    if n_observed_markers == 0:
+        if not operate.ekf_on:
+            operate.notification = 'SLAM is running'
+            operate.ekf_on = True
+        else:
+            operate.notification = '> 2 landmarks is required for pausing'
+    elif n_observed_markers < 3:
+        operate.notification = '> 2 landmarks is required for pausing'
+    else:
+        if not operate.ekf_on:
+            operate.request_recover_robot = True
+        operate.ekf_on = not operate.ekf_on
+        if operate.ekf_on:
+            operate.notification = 'SLAM is running'
+        else:
+            operate.notification = 'SLAM is paused'
+
     fruits_list, fruit_true_pos, aruco_true_pos, search_list_pose = operate.read_true_map(args)
 
     operate.goals = search_list_pose
-    # operate.import_markers(aruco_true_pos)
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    RRT_res = 0.01
-    RRT_expand = 0.05
-    obs = RRT.get_obstacles(fruit_true_pos, aruco_true_pos)
+
+    for i, fruit in enumerate(fruits_list):
+        print(f"Fruit: {fruit}")
+        print(f"Coords: {search_list_pose[i]}")
+
     for i in range(len(search_list_pose)):
-        reset_pose_angle = True
 
         state = operate.ekf.robot.state[:2].squeeze()
         robot_pose = [state[0],state[1]]
 
-        # path = RRT.RRTC(start=robot_pose,goal=search_list_pose[i],obstacle_list=obs,width=3,height=3,expand_dis=0.5,path_resolution=RRT_res,max_points=5000)
-        # planned = path.planning()
-        # print(planned)
-        
         while True:
             input_waypoint_x = input("Input x coord:")
             input_waypoint_y = input("Input y coord:")
             waypoint = [input_waypoint_x, input_waypoint_y]
 
-            dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1],0]))
-            while dist > 0.01:
+            dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
+            while dist > 0.1:
                 dist_fruit = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
-                dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1], 0]))
+                dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
                 if dist_fruit < 0.3:
                     break
                 else:
                     if int((time.time() - print_time)) % 2 == 0:
                         print_time = time.time()
                     print(f"next waypoint:{float(waypoint[0]):2f}, {float(waypoint[1]):2f}")
+                    print(f"Distance to waypoint: {dist}")
+                    print(f"Predicted robot position: {operate.ekf.robot.state[:2]}")
                     operate.drive_to_point(waypoint)
 
                 operate.update_keyboard()
                 operate.take_pic()
 
-                operate.detect_target()
+                # operate.detect_target()
 
                 drive_meas = operate.control()
                 operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
                 operate.ekf.taglist = tag_list
                 operate.ekf.markers = operate.markers
                 operate.update_slam(drive_meas)
+                robot_pose = operate.ekf.robot.state[:2]
                 operate.record_data()
                 operate.save_image()
-                operate.detect_target()
+                # operate.detect_target()
                 # visualise
                 operate.draw(canvas)
                 pygame.display.update()
 
+            operate.command['motion'] = [0,0]
+            operate.control()
             at_waypoint = input("At fruit? (Y/N)")
             if at_waypoint == "Y":
                 break
