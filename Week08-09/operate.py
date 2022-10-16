@@ -4,8 +4,6 @@ import os, sys
 import time
 import argparse
 import json
-from RRT_Support import RRT
-
 
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
@@ -26,9 +24,10 @@ sys.path.insert(0, "{}/network/".format(os.getcwd()))
 sys.path.insert(0, "{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
 
-from AStar import *
+# from AStar import *
 from util.Helper import *
 from TargetPoseEst import *
+from PathPlanner import *
 
 
 class Operate:
@@ -87,9 +86,12 @@ class Operate:
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
         self.markers = np.zeros((10,2))
+        self.unknown_obs = {}
         self.tags = []
+        self.goals = []
         self.start = False
         
+        self.no_planning = True
 
     # wheel control
     def control(self):
@@ -258,7 +260,7 @@ class Operate:
                 self.command['output'] = True
             # run SLAM
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                pass
+                operate.no_planning = False
                 # self.start = True
                 # if self.arrived_goal == []:
                 #     self.start_planning = True
@@ -452,7 +454,18 @@ class Operate:
         else:
             self.command['motion'] = [1, 0]
 
+    def reset_robot_pose(self):
+            angle = self.ekf.robot.state[2]
+            while (abs(angle) > np.pi):
+                if angle > 0:
+                    angle -= 2 * np.pi
+                else:
+                    angle += 2 * np.pi
 
+            if angle < 0:
+                self.command['motion'] = [0, 1]
+            else:
+                self.command['motion'] = [0, -1]
 
 
 # ## Kelvin Added ##########################
@@ -572,6 +585,7 @@ if __name__ == "__main__":
             counter += 2
 
     operate = Operate(args)
+    fruit_found = False
 
     n_observed_markers = len(operate.ekf.taglist)
     if n_observed_markers == 0:
@@ -596,26 +610,55 @@ if __name__ == "__main__":
     operate.goals = search_list_pose
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+    a_star = AStar()
+
     for i, fruit in enumerate(fruits_list):
         print(f"Fruit: {fruit}")
-        print(f"Coords: {search_list_pose[i]}")
+        print(f"Coords: {operate.goals[i]}")
 
-    for i in range(len(search_list_pose)):
+    while operate.no_planning:
+        operate.update_keyboard()
+        operate.take_pic()
+        drive_meas = operate.control()
+        operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
+        operate.ekf.taglist = tag_list
+        operate.ekf.markers = operate.markers
+        operate.update_slam(drive_meas)
+        robot_pose = operate.ekf.robot.state[:2]
+        operate.record_data()
+        operate.save_image()
+        # operate.detect_target()
+        # visualise
+        operate.draw(canvas)
+        pygame.display.update()
 
+    for i in range(len(operate.goals)):
+        reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
+        a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.markers, unknown_obs=operate.unknown_obs)
+        rx, ry = a_star.rx, a_star.ry
+
         robot_pose = [state[0],state[1]]
 
-        while True:
-            input_waypoint_x = input("Input x coord:")
-            input_waypoint_y = input("Input y coord:")
-            waypoint = [input_waypoint_x, input_waypoint_y]
+        for j in range(len(rx)):
+            # input_waypoint_x = input("Input x coord:")
+            # input_waypoint_y = input("Input y coord:")
+            # waypoint = [input_waypoint_x, input_waypoint_y]
+            waypoint = [rx[j], ry[j]]
 
             dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
-            while dist > 0.1:
-                dist_fruit = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
+            while dist > 0.05:
+                fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if dist_fruit < 0.3:
+                if fruit_distance < 0.25:
+                    fruit_found = True
                     break
+                if reset_robot_pose:
+                    if not operate.ekf.robot.state[2] <= 0.05:
+                        operate.reset_robot_pose()
+                        time.sleep(1)
+                    else:
+                        reset_robot_pose = False
                 else:
                     if int((time.time() - print_time)) % 2 == 0:
                         print_time = time.time()
@@ -644,6 +687,11 @@ if __name__ == "__main__":
 
             operate.command['motion'] = [0,0]
             operate.control()
-            at_waypoint = input("At fruit? (Y/N)")
-            if at_waypoint == "Y":
+            # at_waypoint = input("At fruit? (Y/N)")
+            # if at_waypoint == "Y":
+            #     break
+            if fruit_found:
+                fruit_found = False
+                print("Fruit found!")
+                time.sleep(5)
                 break
