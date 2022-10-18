@@ -220,17 +220,17 @@ class AStar:
 
         # define map boundary
         ox, oy = [], []
-        for i in np.linspace(-1.5, 1.5, 60):
+        for i in np.linspace(-1.45, 1.45, 60):
             ox.append(i)
-            oy.append(1.5)
-        for i in np.linspace(-1.5, 1.5, 60):
+            oy.append(1.45)
+        for i in np.linspace(-1.45, 1.45, 60):
             ox.append(i)
-            oy.append(-1.5)
-        for i in np.linspace(-1.5, 1.5, 60):
-            ox.append(1.5)
+            oy.append(-1.45)
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(1.45)
             oy.append(i)
-        for i in np.linspace(-1.5, 1.5, 60):
-            ox.append(-1.5)
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(-1.45)
             oy.append(i)
         
         # reading map and set obstacles (aruco marker)

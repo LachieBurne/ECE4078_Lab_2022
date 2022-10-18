@@ -633,6 +633,7 @@ if __name__ == "__main__":
         pygame.display.update()
 
     for i in range(len(operate.goals)):
+        operate.notification = f"Finding the {fruits_list[i]}"
         reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
         a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.markers, unknown_obs=operate.unknown_obs)
@@ -650,13 +651,15 @@ if __name__ == "__main__":
             while dist > 0.05:
                 fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if fruit_distance < 0.25:
+                if fruit_distance < 0.2:
                     fruit_found = True
                     break
                 if reset_robot_pose:
                     if not operate.ekf.robot.state[2] <= 0.05:
+                        operate.notification = "Resetting robot pose"
                         operate.reset_robot_pose()
                         time.sleep(1)
+                        operate.notification = f"Finding the {fruits_list[i]}"
                     else:
                         reset_robot_pose = False
                 else:
@@ -693,5 +696,6 @@ if __name__ == "__main__":
             if fruit_found:
                 fruit_found = False
                 print("Fruit found!")
+                operate.notification = "Fruit found!"
                 time.sleep(5)
                 break
