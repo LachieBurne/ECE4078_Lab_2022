@@ -262,13 +262,13 @@ def path_planning(cat, show_animation=True):
             oy.append(j)
 
     # checking unknown fruit obstacles and set it on map
-    print('unknown obstacles:', cat.unknown_obstacles)
+    print('unknown obstacles:', cat.unknown_obs)
     # print(len(self.unknown_obstacles.keys()))
-    for i in cat.unknown_obstacles.keys():
-        x_min = cat.unknown_obstacles[i][0][0] - aruco_size
-        x_max = cat.unknown_obstacles[i][0][0] + aruco_size
-        y_min = cat.unknown_obstacles[i][1][0] - aruco_size
-        y_max = cat.unknown_obstacles[i][1][0] + aruco_size
+    for i in cat.unknown_obs.keys():
+        x_min = cat.unknown_obs[i][0][0] - aruco_size
+        x_max = cat.unknown_obs[i][0][0] + aruco_size
+        y_min = cat.unknown_obs[i][1][0] - aruco_size
+        y_max = cat.unknown_obs[i][1][0] + aruco_size
         for j in np.linspace(x_min,x_max, 15):
             for k in np.linspace(y_min,y_max, 15):
                 ox.append(j)
@@ -323,9 +323,12 @@ def path_planning(cat, show_animation=True):
     plt.savefig('path.png')
     plt.clf()
 
-    cat.path = np.hstack((rx,ry))
-    cat.start_planning = False
-    cat.run_path = True
+    # cat.path = np.hstack((rx,ry))
+    # cat.start_planning = False
+    # cat.run_path = True
 
-    print(cat.path)
+    # print(cat.path)
+    print(rx)
+    print(ry)
     print(' ')
+    return rx, ry

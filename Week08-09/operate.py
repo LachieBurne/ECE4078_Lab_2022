@@ -1,3 +1,4 @@
+from re import I
 import numpy as np
 import cv2
 import os, sys
@@ -18,6 +19,7 @@ sys.path.insert(0, "{}/slam".format(os.getcwd()))
 from slam.ekf import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
+from AStar import *
 
 # import CV components
 sys.path.insert(0, "{}/network/".format(os.getcwd()))
@@ -610,7 +612,7 @@ if __name__ == "__main__":
     operate.goals = search_list_pose
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-    a_star = AStar()
+    # a_star = AStarPlanner()
 
     for i, fruit in enumerate(fruits_list):
         print(f"Fruit: {fruit}")
@@ -636,8 +638,12 @@ if __name__ == "__main__":
         operate.notification = f"Finding the {fruits_list[i]}"
         reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
-        a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.markers, unknown_obs=operate.unknown_obs)
-        rx, ry = a_star.rx, a_star.ry
+        # print(operate.ekf.markers)
+        # a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.ekf.markers, unknown_obs=operate.unknown_obs)
+        # rx, ry = a_star.rx, a_star.ry
+        operate.goal_num = i
+        operate.arrived_goal = operate.goals[:operate.goal_num]
+        rx, ry = path_planning(operate)
 
         robot_pose = [state[0],state[1]]
 

@@ -216,7 +216,7 @@ class AStar:
         gx = goals[goal_num][0]  # [m]
         gy = goals[goal_num][1]  # [m]
         
-        aruco_size = 0.3/2 # [m]
+        aruco_size = 0.1/2 # [m]
 
         # define map boundary
         ox, oy = [], []
@@ -299,13 +299,13 @@ class AStar:
                 oy.append(j)
 
         # if show_animation:  # pragma: no cover
-        #     plt.plot(ox, oy, ".k")
-        #     plt.plot(sx, sy, "og")
-        #     plt.plot(gx, gy, "xb")
-        #     plt.xticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
-        #     plt.yticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
-        #     plt.grid(True)
-        #     plt.axis("equal")
+        plt.plot(ox, oy, ".k")
+        plt.plot(sx, sy, "og")
+        plt.plot(gx, gy, "xb")
+        plt.xticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+        plt.yticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+        plt.grid(True)
+        plt.axis("equal")
 
         rx, ry = self.planning(sx, sy, gx, gy)
         rx.reverse()
