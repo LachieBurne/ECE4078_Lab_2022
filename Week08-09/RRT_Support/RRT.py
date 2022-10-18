@@ -6,7 +6,6 @@ import math
 
 from RRT_Support.Obstacle import Circle
 
-
 class RRTC:
     """
     Class for RRT planning
@@ -52,7 +51,7 @@ class RRTC:
         self.start_node_list = []  # Tree from start
         self.end_node_list = []  # Tree from end
 
-    def planning(self):
+    def planning_old(self):
         """
         rrt path planning
         """
@@ -102,6 +101,13 @@ class RRTC:
         # ENDTODO ----------------------------------------------------------------------------------------------
 
         return None  # cannot find path
+
+    def planning(self):
+        path_old = self.planning_old()
+        path_new = np.array(path_old).T
+        display_path(self.obstacle_list, path_old)
+        return path_new[0].tolist(),path_new[1].tolist()
+
 
     def straighten(self, path):
         final_path = []
@@ -233,3 +239,26 @@ def get_obstacles(fruit_true_pos, aruco_true_pos):
         # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
         obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
     return obstacles
+
+def display_path(obs, path):
+    """
+    obs is a list of the obstacles
+    path is the path in the form of [[x,y]]
+    """
+    map = np.zeros((300, 300, 3), np.uint8)
+
+    # Make all the obstacles white circles
+    for ob in obs:
+        ob_x = (ob.center[0] + 1.5)*100
+        ob_y = (ob.center[1] + 1.5)*100
+        rad = ob.radius
+        map = cv2.circle(map, (ob_x, ob_y), rad, (255,255,255), -1)
+
+    for i in range(len(path-1)):
+        s1_x = (path[i][0] + 1.5)*100
+        s1_y = (path[i][1] + 1.5)*100
+        s2_x = (path[i+1][0] + 1.5)*100
+        s2_y = (path[i+1][1] + 1.5)*100
+        map = cv2.line(map,(s1_x,s1_y),(s2_x,s2_y),(0,255,0),2)
+
+    cv2.imwrite('RRT_path.png',map)
