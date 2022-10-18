@@ -159,7 +159,7 @@ def partly_drive(operate, drive_time, resolution=2):
 def drive_to_point(operate, scale, baseline, waypoint):
     print(f"Driving to waypoint...")
     done = False
-    dt = calculate_drive_time(0.09, scale/2) if SIM else calculate_drive_time(0.09, scale)
+    dt = calculate_drive_time(0.1, scale) # if SIM else calculate_drive_time(0.09, scale)
     operate.command['motion'] = [1,0]
     while not done:
         operate.command['motion'] = [1,0]
@@ -180,7 +180,7 @@ def turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle):
         print(f"Turning to waypoint...")
         done = False
         robot_pose = operate.ekf.robot.state.flatten()
-        dt = calculate_turn_time(np.pi/180*10, baseline, scale)
+        dt = calculate_turn_time(np.pi/180*5, baseline, scale)
         while not done:
             operate.command['motion'] = [0, 2*sign] if abs(turning_angle) > 0 else [0, 0]
             robot_pose = get_robot_pose(operate, dt)
