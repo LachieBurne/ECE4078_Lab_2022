@@ -3,6 +3,7 @@ import numpy as np
 import random
 import os
 import math
+import cv2
 
 from RRT_Support.Obstacle import Circle
 
@@ -26,10 +27,10 @@ class RRTC:
     def __init__(self, start=np.zeros(2),
                  goal=np.array([120, 90]),
                  obstacle_list=None,
-                 width=160,
-                 height=100,
-                 expand_dis=3.0,
-                 path_resolution=0.5,
+                 width=3,
+                 height=3,
+                 expand_dis=0.1,
+                 path_resolution=0.01,
                  max_points=200):
         """
         Setting Parameter
@@ -249,16 +250,22 @@ def display_path(obs, path):
 
     # Make all the obstacles white circles
     for ob in obs:
-        ob_x = (ob.center[0] + 1.5)*100
-        ob_y = (ob.center[1] + 1.5)*100
-        rad = ob.radius
+        print(ob.center)
+        ob_x = int(ob.center[0] + 1.5)*100
+        ob_y = int(ob.center[1] + 1.5)*100
+        rad = int(ob.radius*100)
         map = cv2.circle(map, (ob_x, ob_y), rad, (255,255,255), -1)
-
-    for i in range(len(path-1)):
-        s1_x = (path[i][0] + 1.5)*100
-        s1_y = (path[i][1] + 1.5)*100
-        s2_x = (path[i+1][0] + 1.5)*100
-        s2_y = (path[i+1][1] + 1.5)*100
-        map = cv2.line(map,(s1_x,s1_y),(s2_x,s2_y),(0,255,0),2)
+    if path is not None:
+        for i in range(len(path-1)):
+            s1_x = int(path[i][0] + 1.5)*100
+            s1_y = int(path[i][1] + 1.5)*100
+            s2_x = int(path[i+1][0] + 1.5)*100
+            s2_y = int(path[i+1][1] + 1.5)*100
+            map = cv2.line(map,(s1_x,s1_y),(s2_x,s2_y),(0,255,0),2)
 
     cv2.imwrite('RRT_path.png',map)
+
+
+obstacles = get_obstacles(fruit_true_pos, aruco_true_pos)
+rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
+rx, ry = rrt.planning()
