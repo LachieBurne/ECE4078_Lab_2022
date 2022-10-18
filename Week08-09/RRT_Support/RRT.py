@@ -207,8 +207,8 @@ class RRTC:
         return math.hypot(dx, dy)
 
     def get_random_node(self):
-        x = self.width * np.random.random_sample()
-        y = self.height * np.random.random_sample()
+        x = (self.width * np.random.random_sample()) - 1.5
+        y = (self.height * np.random.random_sample()) - 1.5
         rnd = self.Node(x, y)
         return rnd
 
@@ -229,13 +229,23 @@ class RRTC:
         theta = math.atan2(dy, dx)
         return d, theta
 
-def get_obstacles(fruit_true_pos, aruco_true_pos):
+def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx):
     obstacles = []
     fruit_safety = 0.15
     aruco_safety = 0.15
+
     for fruit in fruit_true_pos:
-        # obstacles.append(Rectangle((fruit[0],fruit[1]),fruit_safety,fruit_safety))
+        for i, pose in enumerate(search_list_pose):
+            if (fruit == pose).all():
+                counter = i
+                break
+                    
+        if idx == 0 and idx == counter:
+            continue
+        if idx > 0 and (counter == idx-1 or counter == idx):
+            continue
         obstacles.append(Circle(fruit[0],fruit[1],fruit_safety))
+
     for arucos in aruco_true_pos:
         # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
         obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
@@ -250,22 +260,19 @@ def display_path(obs, path):
 
     # Make all the obstacles white circles
     for ob in obs:
-        print(ob.center)
-        ob_x = int(ob.center[0] + 1.5)*100
-        ob_y = int(ob.center[1] + 1.5)*100
+        print(ob.center*100)
+        print(ob.radius*100)
+        ob_x = int((ob.center[0] + 1.5)*100)
+        ob_y = int((ob.center[1] + 1.5)*100)
         rad = int(ob.radius*100)
         map = cv2.circle(map, (ob_x, ob_y), rad, (255,255,255), -1)
     if path is not None:
-        for i in range(len(path-1)):
-            s1_x = int(path[i][0] + 1.5)*100
-            s1_y = int(path[i][1] + 1.5)*100
-            s2_x = int(path[i+1][0] + 1.5)*100
-            s2_y = int(path[i+1][1] + 1.5)*100
+        for i in range(len(path)-1):
+            s1_x = int((path[i][0] + 1.5)*100)
+            s1_y = int((path[i][1] + 1.5)*100)
+            s2_x = int((path[i+1][0] + 1.5)*100)
+            s2_y = int((path[i+1][1] + 1.5)*100)
+            print(s1_x, s1_y, s2_x, s2_y)
             map = cv2.line(map,(s1_x,s1_y),(s2_x,s2_y),(0,255,0),2)
 
     cv2.imwrite('RRT_path.png',map)
-
-
-obstacles = get_obstacles(fruit_true_pos, aruco_true_pos)
-rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
-rx, ry = rrt.planning()

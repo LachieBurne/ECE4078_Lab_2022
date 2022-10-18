@@ -613,8 +613,6 @@ if __name__ == "__main__":
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
     # a_star = AStarPlanner()
-    obstacles = get_obstacles(fruit_true_pos, aruco_true_pos)
-    
 
     for i, fruit in enumerate(fruits_list):
         print(f"Fruit: {fruit}")
@@ -640,6 +638,7 @@ if __name__ == "__main__":
         operate.notification = f"Finding the {fruits_list[i]}"
         reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
+        obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i)
         rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
         # print(operate.ekf.markers)
         # a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.ekf.markers, unknown_obs=operate.unknown_obs)
