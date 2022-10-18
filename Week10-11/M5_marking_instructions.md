@@ -127,8 +127,8 @@ There 2 key tasks, mapping (ArUco markers + fruits locations) and fruit searchin
 7. You may now attempt the 2 key tasks in whatever sequence, as many times as you want within the time limit
 
 8. You should rename the ```slam.txt``` and the ```targets.txt``` files after each attempt, please use the following naming format:
-    - slam_{attempt_no}_{team_no}.txt, e.g. slam_1_301.txt
-    - targets_{attempt_no}_{team_no}.txt, e.g. targets_1_301.txt
+    - slam_{attempt_no}_{team_no}.txt, e.g. slam_sim_1_301.txt
+    - targets_{attempt_no}_{team_no}.txt, e.g. targets_sim_1_301.txt
     - you may receive zero score by failing to follow this naming format
 
 9. You may use the [mapping_eval.py](mapping_eval.py) to check your mapping performance if you want
