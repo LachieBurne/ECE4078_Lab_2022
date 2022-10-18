@@ -1,42 +1,35 @@
-# Adapted version of A* grid planning done by Atsushi Sakai(@Atsushi_twi) and Nikos Kanargias (nkana@tee.gr)
-
-import math
-import matplotlib
-matplotlib.use('TKAgg')
-import matplotlib.pyplot as plt
 import numpy as np
+import math
+import matplotlib.pyplot as plt
 
-show_animation = True
+# class PathPlanner():
+#     def __init__(self):
+#         self.rx = [] # x coords of path to fruit
+#         self.ry = [] # y coords of path to fruit
+#         pass
 
-class AStarPlanner:
+#     def plan_path(self):
+#         pass
 
-    def __init__(self, ox, oy, resolution, rr):
-        """
-        ox: x position list of obstacles [m]
-        oy: y position list of obstacles [m]
-        resolution: grid resolution [m]
-        rr: robot radius[m]
-        """
-
-        self.resolution = resolution
-        self.rr = rr
+class AStar:
+    def __init__(self):
+        self.resolution = 0.1
+        self.rr = 0.17
         self.min_x, self.min_y = 0, 0
         self.max_x, self.max_y = 0, 0
         self.obstacle_map = None
         self.x_width, self.y_width = 0, 0
         self.motion = self.get_motion_model()
-        self.calc_obstacle_map(ox, oy)
-
+        
     class Node:
         def __init__(self, x, y, cost, parent_index):
-            self.x = x  # index of grid
-            self.y = y  # index of grid
+            self.x = x
+            self.y = y
             self.cost = cost
             self.parent_index = parent_index
 
         def __str__(self):
-            return str(self.x) + "," + str(self.y) + "," + str(
-                self.cost) + "," + str(self.parent_index)
+            return f"{str(self.x)}, {str(self.y)}, {str(self.cost)}, {str(self.parent_index)}"
 
     def planning(self, sx, sy, gx, gy):
         """
@@ -72,15 +65,15 @@ class AStarPlanner:
             current = open_set[c_id]
 
             # show graph
-            if show_animation:  # pragma: no cover
-                plt.plot(self.calc_grid_position(current.x, self.min_x),
-                         self.calc_grid_position(current.y, self.min_y), "xc")
-                # for stopping simulation with the esc key.
-                plt.gcf().canvas.mpl_connect('key_release_event',
-                                             lambda event: [exit(
-                                                 0) if event.key == 'escape' else None])
-                # if len(closed_set.keys()) % 10 == 0:
-                #     plt.pause(0.001)
+            # if show_animation:  # pragma: no cover
+            #     plt.plot(self.calc_grid_position(current.x, self.min_x),
+            #              self.calc_grid_position(current.y, self.min_y), "xc")
+            #     # for stopping simulation with the esc key.
+            #     plt.gcf().canvas.mpl_connect('key_release_event',
+            #                                  lambda event: [exit(
+            #                                      0) if event.key == 'escape' else None])
+            #     # if len(closed_set.keys()) % 10 == 0:
+            #     #     plt.pause(0.001)
 
             if current.x == goal_node.x and current.y == goal_node.y:
                 # print("Find goal")
@@ -115,22 +108,22 @@ class AStarPlanner:
                         # This path is the best until now. record it
                         open_set[n_id] = node
 
-        rx, ry = self.calc_final_path(goal_node, closed_set)
+        self.rx, self.ry = self.calc_final_path(goal_node, closed_set)
 
-        return rx, ry
+        return self.rx, self.ry
 
     def calc_final_path(self, goal_node, closed_set):
         # generate final course
-        rx, ry = [self.calc_grid_position(goal_node.x, self.min_x)], [
+        self.rx, self.ry = [self.calc_grid_position(goal_node.x, self.min_x)], [
             self.calc_grid_position(goal_node.y, self.min_y)]
         parent_index = goal_node.parent_index
         while parent_index != -1:
             n = closed_set[parent_index]
-            rx.append(self.calc_grid_position(n.x, self.min_x))
-            ry.append(self.calc_grid_position(n.y, self.min_y))
+            self.rx.append(self.calc_grid_position(n.x, self.min_x))
+            self.ry.append(self.calc_grid_position(n.y, self.min_y))
             parent_index = n.parent_index
 
-        return rx, ry
+        return self.rx, self.ry
 
     @staticmethod
     def calc_heuristic(n1, n2):
@@ -217,94 +210,95 @@ class AStarPlanner:
         return motion
 
 
-def path_planning(cat, show_animation=True):
-    sx = cat.ekf.robot.state[0].item()
-    sy = cat.ekf.robot.state[1].item()
-    gx = cat.goals[cat.goal_num][0]  # [m]
-    gy = cat.goals[cat.goal_num][1]  # [m]
-    grid_size = 0.1  # [m]
-    robot_radius = 0.17  # [m]
-    aruco_size = 0.20/2 # [m]
+    def plan_path(self, r_state, goals, goal_num, markers, unknown_obs, show_animation=False):
+        sx = r_state[0]
+        sy = r_state[1]
+        gx = goals[goal_num][0]  # [m]
+        gy = goals[goal_num][1]  # [m]
+        
+        aruco_size = 0.1/2 # [m]
 
-    # define map boundary
-    ox, oy = [], []
-    for i in np.linspace(-1.5, 1.5, 60):
-        ox.append(i)
-        oy.append(1.5)
-    for i in np.linspace(-1.5, 1.5, 60):
-        ox.append(i)
-        oy.append(-1.5)
-    for i in np.linspace(-1.5, 1.5, 60):
-        ox.append(1.5)
-        oy.append(i)
-    for i in np.linspace(-1.5, 1.5, 60):
-        ox.append(-1.5)
-        oy.append(i)
-    
-    # reading map and set obstacles (aruco marker)
-    for i in cat.markers:
-        x_min = i[0] - aruco_size
-        x_max = i[0] + aruco_size
-        y_min = i[1] - aruco_size
-        y_max = i[1] + aruco_size
-        for j in np.linspace(x_min,x_max, 15):
-            for k in np.linspace(y_min,y_max, 15):
+        # define map boundary
+        ox, oy = [], []
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(i)
+            oy.append(1.45)
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(i)
+            oy.append(-1.45)
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(1.45)
+            oy.append(i)
+        for i in np.linspace(-1.45, 1.45, 60):
+            ox.append(-1.45)
+            oy.append(i)
+        
+        # reading map and set obstacles (aruco marker)
+        for i in markers:
+            x_min = i[0] - aruco_size
+            x_max = i[0] + aruco_size
+            y_min = i[1] - aruco_size
+            y_max = i[1] + aruco_size
+            for j in np.linspace(x_min,x_max, 15):
+                for k in np.linspace(y_min,y_max, 15):
+                    ox.append(j)
+                    oy.append(k)
+            for j in np.linspace(x_min,x_max, 15):
                 ox.append(j)
-                oy.append(k)
-        for j in np.linspace(x_min,x_max, 15):
-            ox.append(j)
-            oy.append(y_min)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_max)
-            oy.append(j)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_min)
-            oy.append(j)
+                oy.append(y_min)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_max)
+                oy.append(j)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_min)
+                oy.append(j)
 
-    # checking unknown fruit obstacles and set it on map
-    print('unknown obstacles:', cat.unknown_obs)
-    # print(len(self.unknown_obstacles.keys()))
-    for i in cat.unknown_obs.keys():
-        x_min = cat.unknown_obs[i][0][0] - aruco_size
-        x_max = cat.unknown_obs[i][0][0] + aruco_size
-        y_min = cat.unknown_obs[i][1][0] - aruco_size
-        y_max = cat.unknown_obs[i][1][0] + aruco_size
-        for j in np.linspace(x_min,x_max, 15):
-            for k in np.linspace(y_min,y_max, 15):
+        # checking unknown fruit obstacles and set it on map
+        print('unknown obstacles:', unknown_obs)
+        # print(len(self.unknown_obstacles.keys()))
+        for i in unknown_obs.keys():
+            x_min = unknown_obs[i][0][0] - aruco_size
+            x_max = unknown_obs[i][0][0] + aruco_size
+            y_min = unknown_obs[i][1][0] - aruco_size
+            y_max = unknown_obs[i][1][0] + aruco_size
+            for j in np.linspace(x_min,x_max, 15):
+                for k in np.linspace(y_min,y_max, 15):
+                    ox.append(j)
+                    oy.append(k)
+            for j in np.linspace(x_min,x_max, 15):
                 ox.append(j)
-                oy.append(k)
-        for j in np.linspace(x_min,x_max, 15):
-            ox.append(j)
-            oy.append(y_min)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_max)
-            oy.append(j)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_min)
-            oy.append(j)
+                oy.append(y_min)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_max)
+                oy.append(j)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_min)
+                oy.append(j)
 
-    # checking arrived goals and set it on map
-    print('arrived_goals:', cat.arrived_goal)
-    for goal in cat.arrived_goal:
-        x_min = goal[0] - aruco_size
-        x_max = goal[0] + aruco_size
-        y_min = goal[1] - aruco_size
-        y_max = goal[1] + aruco_size
-        for j in np.linspace(x_min,x_max, 15):
-            for k in np.linspace(y_min,y_max, 15):
+        self.calc_obstacle_map(ox, oy)
+
+        # checking arrived goals and set it on map
+        print('arrived_goals:', goals[:goal_num])
+        for goal in goals[:goal_num]:
+            x_min = goal[0] - aruco_size
+            x_max = goal[0] + aruco_size
+            y_min = goal[1] - aruco_size
+            y_max = goal[1] + aruco_size
+            for j in np.linspace(x_min,x_max, 15):
+                for k in np.linspace(y_min,y_max, 15):
+                    ox.append(j)
+                    oy.append(k)
+            for j in np.linspace(x_min,x_max, 15):
                 ox.append(j)
-                oy.append(k)
-        for j in np.linspace(x_min,x_max, 15):
-            ox.append(j)
-            oy.append(y_min)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_max)
-            oy.append(j)
-        for j in np.linspace(y_min,y_max, 15):
-            ox.append(x_min)
-            oy.append(j)
+                oy.append(y_min)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_max)
+                oy.append(j)
+            for j in np.linspace(y_min,y_max, 15):
+                ox.append(x_min)
+                oy.append(j)
 
-    if show_animation:  # pragma: no cover
+        # if show_animation:  # pragma: no cover
         plt.plot(ox, oy, ".k")
         plt.plot(sx, sy, "og")
         plt.plot(gx, gy, "xb")
@@ -313,22 +307,21 @@ def path_planning(cat, show_animation=True):
         plt.grid(True)
         plt.axis("equal")
 
-    a_star = AStarPlanner(ox, oy, grid_size, robot_radius)
-    rx, ry = a_star.planning(sx, sy, gx, gy)
-    rx.reverse()
-    ry.reverse()
+        rx, ry = self.planning(sx, sy, gx, gy)
+        rx.reverse()
+        ry.reverse()
 
-    rx = np.array(rx).reshape(-1,1)
-    ry = np.array(ry).reshape(-1,1)
-    plt.savefig('path.png')
-    plt.clf()
+        rx = np.array(rx).reshape(-1,1)
+        ry = np.array(ry).reshape(-1,1)
+        plt.savefig('path.png')
+        plt.clf()
 
-    # cat.path = np.hstack((rx,ry))
-    # cat.start_planning = False
-    # cat.run_path = True
+        self.path = np.hstack((rx,ry))
+        self.start_planning = False
+        self.run_path = True
+        
+        print("------------------Next Goal Path------------------")
+        print(self.path)
+        print(' ')
 
-    # print(cat.path)
-    print(rx)
-    print(ry)
-    print(' ')
-    return rx, ry
+        
