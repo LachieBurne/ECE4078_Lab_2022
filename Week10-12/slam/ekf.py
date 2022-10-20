@@ -57,6 +57,12 @@ class EKF:
             utils = MappingUtils(self.markers, self.P[3:,3:], self.taglist)
             utils.save(fname)
 
+    def load_map(self, marker_list, taglist, P):
+        utils = MappingUtils(marker_list, P[3:,3:],taglist)
+        self.taglist = utils.taglist
+        self.markers = utils.markers
+        self.P = P
+
     def recover_from_pause(self, measurements):
         if not measurements:
             return False

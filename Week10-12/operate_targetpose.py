@@ -2,6 +2,9 @@
 # will be extended in following milestones for system integration
 
 # basic python packages
+
+from auto_fruit_search import *
+
 import numpy as np
 import cv2 
 import os, sys
@@ -71,6 +74,11 @@ class Operate:
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+
+        self.lm_cov_init = 1e-6
+        self.P = np.zeros((3,3))
+        self.markers = np.zeros((2,10))
+        self.taglist = []
 
     # wheel control
     def control(self):       
@@ -233,10 +241,10 @@ class Operate:
                 self.command['motion'] = [-1, 0]
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, 2]
+                self.command['motion'] = [0, 1]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0, -2]
+                self.command['motion'] = [0, -1]
             # stop on key up
             elif event.type == pygame.KEYUP and (event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]):
                 self.command['motion'] = [0, 0]
@@ -332,6 +340,22 @@ if __name__ == "__main__":
             counter += 2
 
     operate = Operate(args)
+
+    fruit_name, fruit_pos, aruco_pos = read_true_map(args.map)
+    search_list = read_search_list()
+
+    #adding known aruco markers
+    for (i, pos) in enumerate(aruco_true_pos):
+        operate.taglist.append(i + 1)
+        operate.markers[0][i] = pos[0]
+        operate.markers[1][i] = pos[1]
+
+        operate.P = np.concatenate((operate.P, np.zeros((2, operate.P.shape[1]))), axis=0)
+        operate.P = np.concatenate((operate.P, np.zeros((operate.P.shape[0], 2))), axis=1)
+        operate.P[-2,-2] = operate.init_lm_cov**2
+        operate.P[-1,-1] = operate.init_lm_cov**2
+
+    operate.ekf.load_map(operate.markers, operate.taglist, operate.P)
 
     while start:
         operate.update_keyboard()
