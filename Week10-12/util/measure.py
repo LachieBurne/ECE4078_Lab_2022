@@ -13,5 +13,13 @@ class Drive:
         self.left_speed = left_speed
         self.right_speed = right_speed
         self.dt = dt
-        self.left_cov = left_cov
-        self.right_cov = right_cov
+
+        if left_speed and right_speed == 0:
+            cov = 0
+        elif left_speed == right_speed:
+            cov = 1
+        else
+            cov = 2
+
+        self.left_cov = cov
+        self.right_cov = cov

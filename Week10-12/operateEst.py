@@ -65,6 +65,8 @@ class Operate:
         self.count_down = 300
         self.start_time = time.time()
         self.control_clock = time.time()
+        self.no_update_ekf = False
+        self.previous_img = None
         # initialise images
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
@@ -104,7 +106,10 @@ class Operate:
         elif self.ekf_on: # and not self.debug_flag:
             self.ekf.predict(drive_meas)
             self.ekf.add_landmarks(lms)
-            self.ekf.update(lms)
+            if self.no_update_ekf:
+                pass
+            else:
+                self.ekf.update(lms)
 
     # save images taken by the camera
     def save_image(self):
@@ -331,6 +336,11 @@ if __name__ == "__main__":
     while start:
         operate.update_keyboard()
         operate.take_pic()
+        operate.previous_image = operate.img
+        if np.array_equal(operate.img, operate.previous_img):
+            operate.no_update_ekf = True
+        else:
+            operate.no_update_ekf = False
         drive_meas = operate.control()
         operate.update_slam(drive_meas)
         operate.record_data()
