@@ -63,7 +63,7 @@ def drive_to_point(operate, scale, baseline, waypoint, last_waypoint):
     while not done:
         operate.command['motion'] = [1,0]
         robot_pose = get_robot_pose(operate, dt)
-        operate.pibot.set_velocity([0,0])
+        # operate.pibot.set_velocity([0,0])
         distance_to_waypoint = calculate_distance_to_waypoint(robot_pose, waypoint)
         turning_angle = calculate_turning_angle(robot_pose, waypoint)
         if last_waypoint and distance_to_waypoint < 0.25:
@@ -114,9 +114,9 @@ def move_to_waypoint(waypoint, robot_pose, operate, ip, last_waypoint):
     # then drive straight to the way point
 
     then = time.time()
-    condition = 1*2 if ip=="localhost" else 1
-    while time.time() - then < condition:
-        robot_pose = get_robot_pose(operate)
+    # condition = 1*2 if ip=="localhost" else 1
+    # while time.time() - then < condition:
+    robot_pose = get_robot_pose(operate)
 
     turning_angle  = calculate_turning_angle(robot_pose, waypoint)
     sign = 1 if turning_angle > 0 else -1
@@ -139,15 +139,15 @@ def get_robot_pose(operate, dt=None):
             operate.command['motion'] = [0, 0]
             operate.pibot.set_velocity(operate.command['motion'])
     
-    for i in range(5):
+    for i in range(10):
         operate.take_pic()
     drive_meas = operate.control(dt)
     operate.update_slam(drive_meas)
     operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, operate.aruco_true_pos, operate.tags)
     operate.ekf.taglist = tag_list
     operate.ekf.markers = operate.markers
-    operate.record_data()
-    operate.save_image()
+    # operate.record_data()
+    # operate.save_image()
     # operate.detect_target()
     # visualise
     operate.draw(operate.canvas)
