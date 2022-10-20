@@ -445,14 +445,14 @@ class Operate:
         if abs(theta_turn) >= threshold_angle:
             if y_diff >= 0:
                 if theta_turn > 0:
-                    self.command['motion'] = [0, 1]
+                    self.command['motion'] = [0, 2]
                 else:
-                    self.command['motion'] = [0, -1]
+                    self.command['motion'] = [0, -2]
             else:
                 if theta_turn <= 0:
-                    self.command['motion'] = [0, -1]
+                    self.command['motion'] = [0, -2]
                 else:
-                    self.command['motion'] = [0, 1]
+                    self.command['motion'] = [0, 2]
         else:
             self.command['motion'] = [1, 0]
 
@@ -661,7 +661,7 @@ if __name__ == "__main__":
             while dist > 0.05:
                 fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if fruit_distance < 0.2:
+                if fruit_distance < 0.15:
                     fruit_found = True
                     break
                 if reset_robot_pose:
