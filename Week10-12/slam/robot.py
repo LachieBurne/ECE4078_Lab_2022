@@ -84,6 +84,9 @@ class Robot:
             DFx[0,2] = lin_vel / ang_vel * (np.cos(th+dt*ang_vel) - np.cos(th))
             DFx[1,2] = lin_vel / ang_vel * (np.sin(th+dt*ang_vel) - np.sin(th))
 
+        lin_vel = lin_vel
+        ang_vel = ang_vel
+
         return DFx
 
     def derivative_measure(self, markers, idx_list):
@@ -149,5 +152,8 @@ class Robot:
         # Compute covariance
         cov = np.diag((drive_meas.left_cov, drive_meas.right_cov))
         cov = Jac @ cov @ Jac.T
+
+        lin_vel = lin_vel
+        ang_vel = ang_vel
         
         return cov

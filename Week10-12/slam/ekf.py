@@ -87,25 +87,22 @@ class EKF:
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
 
-        A = self.state_transition(raw_drive_meas)
         x = self.get_state_vector()
 
         # TODO: add your codes here to compute the predicted x
         self.robot.drive(raw_drive_meas)
+
+        A = self.state_transition(raw_drive_meas)
             
         Q = self.predict_covariance(raw_drive_meas)
             
         self.P = A @ self.P @ A.T + Q
 
-#         if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01): #The robot is within 0.01 unit square of the origin
-#             self.P = self.P * 0.7 # Reduce Uncertainty
 
     # the update step of EKF
     def update(self, measurements):
         if not measurements:
             return
-        
-        x = self.get_state_vector()
         
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
@@ -114,18 +111,15 @@ class EKF:
         # Stack measurements and set covariance
         z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
         R = np.zeros((2*len(measurements),2*len(measurements)))
-        
-        if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
-            for i in range(len(measurements)):
-                R[2*i:2*i+2,2*i:2*i+2] = 0.00001
-        else:
-            for i in range(len(measurements)):
-                R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+        for i in range(len(measurements)):
+            R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+            
 
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
         z_hat = z_hat.reshape((-1,1),order="F")
         C = self.robot.derivative_measure(self.markers, idx_list)
+        x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x
         S = C @ self.P @ C.T + R

@@ -15,10 +15,11 @@ def convert_slam(fname):
     final_dict = {}
     slam_dict = parse_user_map(fname)
     for aruco_num in slam_dict.keys():
-        x = slam_dict[aruco_num][0][0]
-        y = slam_dict[aruco_num][1][0]
-        position = {"x": x, "y": y}
-        final_dict[f'aruco{aruco_num}_0'] = position
+        if aruco_num in range(1,11):
+            x = slam_dict[aruco_num][0][0]
+            y = slam_dict[aruco_num][1][0]
+            position = {"x": x, "y": y}
+            final_dict[f'aruco{aruco_num}_0'] = position
     return final_dict
 
 
