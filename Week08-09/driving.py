@@ -55,7 +55,7 @@ def partly_drive(operate, drive_time, ip, resolution=2):
             operate.update_slam(drive_meas)
     return robot_pose
 
-def drive_to_point(operate, scale, baseline, waypoint):
+def drive_to_point(operate, scale, baseline, waypoint, last_waypoint):
     print(f"Driving to waypoint...")
     done = False
     dt = calculate_drive_time(0.1, scale) # if SIM else calculate_drive_time(0.09, scale)
@@ -66,7 +66,9 @@ def drive_to_point(operate, scale, baseline, waypoint):
         operate.pibot.set_velocity([0,0])
         distance_to_waypoint = calculate_distance_to_waypoint(robot_pose, waypoint)
         turning_angle = calculate_turning_angle(robot_pose, waypoint)
-        if distance_to_waypoint < 0.1:
+        if last_waypoint and distance_to_waypoint < 0.25:
+            done = True
+        elif distance_to_waypoint < 0.1:
             done = True
         elif abs(turning_angle) > np.pi/180*10:
             sign = 1 if turning_angle > 0 else -1
@@ -93,7 +95,7 @@ def turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle):
         print(f"Done...")
         return robot_pose
 
-def move_to_waypoint(waypoint, robot_pose, operate, ip):
+def move_to_waypoint(waypoint, robot_pose, operate, ip, last_waypoint):
     # imports camera / wheel calibration parameters 
     if ip=="localhost":
         fileS = "calibration/param/scale_sim.txt"
@@ -121,7 +123,7 @@ def move_to_waypoint(waypoint, robot_pose, operate, ip):
     operate.command['motion'] = [0, 2*sign] if turning_angle > 0 else [0, 0]
     
     robot_pose = turn_to_point(operate, waypoint, baseline, scale, sign, turning_angle)
-    robot_pose = drive_to_point(operate, scale, baseline, waypoint)
+    robot_pose = drive_to_point(operate, scale, baseline, waypoint, last_waypoint)
 
     ####################################################
 

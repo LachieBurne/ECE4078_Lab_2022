@@ -41,7 +41,7 @@ class aruco_detector:
             lm_bff2d = np.block([[lm_tvecs[2,:]],[-lm_tvecs[0,:]]])
             lm_bff2d = np.mean(lm_bff2d, axis=1).reshape(-1,1)
 
-            lm_measurement = measure.Marker(lm_bff2d, idi)
+            lm_measurement = measure.Marker(lm_bff2d, idi, 1e-1*np.eye(2))
             measurements.append(lm_measurement)
         
         # Draw markers on image copy

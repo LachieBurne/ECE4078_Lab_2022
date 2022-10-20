@@ -671,15 +671,16 @@ if __name__ == "__main__":
         # operate.arrived_goal = operate.goals[:operate.goal_num]
         # rx, ry = path_planning(operate)
         rx, ry = rrt.planning()
+        rx.pop(0)
+        ry.pop(0)
         print(rx, ry)
-
+     
         robot_pose = [state[0],state[1]]
 
         for j in range(len(rx)):
             # input_waypoint_x = input("Input x coord:")
             # input_waypoint_y = input("Input y coord:")
             # waypoint = [input_waypoint_x, input_waypoint_y]
-            control_clock = time.time()
             waypoint = [rx[j], ry[j]]
 
             # dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
@@ -704,8 +705,8 @@ if __name__ == "__main__":
             #         print(f"Distance to waypoint: {dist}")
             #         print(f"Predicted robot position: {operate.ekf.robot.state[:2]}")
             #         operate.drive_to_point(waypoint)
-
-            robot_pose = move_to_waypoint(waypoint, robot_pose, operate, ip=args.ip)
+            last_waypoint = True if j == len(rx) - 1 else  False
+            robot_pose = move_to_waypoint(waypoint, robot_pose, operate, ip=args.ip, last_waypoint=last_waypoint)
             then = time.time()
             while time.time() - then < 5:
                 pass
