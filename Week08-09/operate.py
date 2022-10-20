@@ -465,9 +465,9 @@ class Operate:
                     angle += 2 * np.pi
 
             if angle < 0:
-                self.command['motion'] = [0, 1]
+                self.command['motion'] = [0, 2]
             else:
-                self.command['motion'] = [0, -1]
+                self.command['motion'] = [0, -2]
 
 
 # ## Kelvin Added ##########################
@@ -627,8 +627,8 @@ if __name__ == "__main__":
         operate.ekf.markers = operate.markers
         operate.update_slam(drive_meas)
         robot_pose = operate.ekf.robot.state[:2]
-        operate.record_data()
-        operate.save_image()
+        # operate.record_data()
+        # operate.save_image()
         # operate.detect_target()
         # visualise
         operate.draw(canvas)
@@ -646,12 +646,14 @@ if __name__ == "__main__":
         # operate.goal_num = i
         # operate.arrived_goal = operate.goals[:operate.goal_num]
         # rx, ry = path_planning(operate)
+        operate.notification = "Planning path"
         rx, ry = rrt.planning()
         print(rx, ry)
 
         robot_pose = [state[0],state[1]]
 
         for j in range(len(rx)):
+            operate.notification = f"Finding the {fruits_list[i]}"
             # input_waypoint_x = input("Input x coord:")
             # input_waypoint_y = input("Input y coord:")
             # waypoint = [input_waypoint_x, input_waypoint_y]
@@ -680,7 +682,7 @@ if __name__ == "__main__":
                     print(f"Predicted robot position: {operate.ekf.robot.state[:2]}")
                     operate.drive_to_point(waypoint)
 
-                operate.update_keyboard()
+                # operate.update_keyboard()
                 operate.take_pic()
 
                 # operate.detect_target()

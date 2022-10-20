@@ -31,7 +31,7 @@ class RRTC:
                  height=3,
                  expand_dis=0.1,
                  path_resolution=0.01,
-                 max_points=200):
+                 max_points=300):
         """
         Setting Parameter
         start:Start Position [x,y]
@@ -232,7 +232,7 @@ class RRTC:
 def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx):
     obstacles = []
     fruit_safety = 0.15
-    aruco_safety = 0.15
+    aruco_safety = 0.25
 
     for fruit in fruit_true_pos:
         for i, pose in enumerate(search_list_pose):
