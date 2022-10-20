@@ -14,11 +14,12 @@ class Drive:
         self.right_speed = right_speed
         self.dt = dt
 
+        # Speed covariance
         if left_speed and right_speed == 0:
             cov = 0
         elif left_speed == right_speed:
             cov = 1
-        else
+        else:
             cov = 2
 
         self.left_cov = cov
