@@ -1,7 +1,7 @@
 import json
 import ast
 import numpy as np
-
+import args
 
 def parse_user_map(fname: str) -> dict:
     with open(fname, 'r') as f:
@@ -33,4 +33,11 @@ def combine_everything(slam_fname, fruit_fname):
 
 
 if __name__ == '__main__':
-    combine_everything('slam6_best.txt', 'targets.txt')
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--slam_map", type=str, default="targets.txt")
+    parser.add_argument("--fruit_map", type=str, default="slam.txt")
+    args, _ = parser.parse_known_args()
+
+    combine_everything(args.slam_map, args.fruit_map)
