@@ -1,7 +1,6 @@
 import json
 import ast
 import numpy as np
-import args
 
 def parse_user_map(fname: str) -> dict:
     with open(fname, 'r') as f:
@@ -28,7 +27,7 @@ def combine_everything(slam_fname, fruit_fname):
     fruits = json.load(f)
     slam = convert_slam(slam_fname)
     slam.update(fruits)
-    with open('../Week01-02/util/output_map.txt', 'w') as f:
+    with open('output_map.txt', 'w') as f:
         json.dump(slam, f)
 
 
