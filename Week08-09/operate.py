@@ -1,4 +1,3 @@
-from re import I
 import numpy as np
 import cv2
 import os, sys
@@ -30,6 +29,7 @@ from network.scripts.detector import Detector
 from util.Helper import *
 from TargetPoseEst import *
 from PathPlanner import *
+from driving import *
 
 
 class Operate:
@@ -96,16 +96,36 @@ class Operate:
         self.no_planning = True
 
     # wheel control
-    def control(self):
-        if args.play_data:
-            lv, rv = self.pibot.set_velocity()
+    # def control(self):
+    #     if args.play_data:
+    #         lv, rv = self.pibot.set_velocity()
+    #     else:
+    #         lv, rv = self.pibot.set_velocity(
+    #             self.command['motion'])
+    #     if not self.data is None:
+    #         self.data.write_keyboard(lv, rv)
+    #     dt = time.time() - self.control_clock
+    #     drive_meas = measure.Drive(lv, rv, dt)
+    #     self.control_clock = time.time()
+    #     return drive_meas
+    def control(self, dt):
+        incremental_drive = True if dt is not None else False
+        if self.args.play_data:
+            lv, rv = self.pibot.set_velocity()            
         else:
             lv, rv = self.pibot.set_velocity(
                 self.command['motion'])
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
-        dt = time.time() - self.control_clock
+        if dt is None:
+            dt = time.time() - self.control_clock
         drive_meas = measure.Drive(lv, rv, dt)
+        if incremental_drive:
+            if np.array_equal(self.command['motion'], [1,0]) and self.args.ip == 'localhost':
+                self.pibot.set_velocity(self.command['motion'], time=dt/2)
+            else:
+                self.pibot.set_velocity(self.command['motion'], time=dt)
+
         self.control_clock = time.time()
         return drive_meas
 
@@ -410,7 +430,7 @@ class Operate:
 
         #visualise
         pygame.display.update()
-        self.draw(canvas)
+        self.draw(self.canvas)
     ##########################################
 
     def drive_to_point(self, waypoint):
@@ -542,6 +562,7 @@ if __name__ == "__main__":
 
     global print_time
     print_time = time.time()
+    
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
@@ -554,15 +575,17 @@ if __name__ == "__main__":
     parser.add_argument("--search_list", default='search_list.txt')
     args, _ = parser.parse_known_args()
 
+    operate = Operate(args)
+
     pygame.font.init()
     TITLE_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 35)
     TEXT_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 40)
 
     width, height = 700, 660
-    canvas = pygame.display.set_mode((width, height))
+    operate.canvas = pygame.display.set_mode((width, height))
     pygame.display.set_caption('ECE4078 2022 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
-    canvas.fill((0, 0, 0))
+    operate.canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
     pibot_animate = [pygame.image.load('pics/8bit/pibot1.png'),
                      pygame.image.load('pics/8bit/pibot2.png'),
@@ -578,15 +601,14 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 start = True
-        canvas.blit(splash, (0, 0))
+        operate.canvas.blit(splash, (0, 0))
         x_ = min(counter, 600)
         if x_ < 600:
-            canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
+            operate.canvas.blit(pibot_animate[counter % 10 // 2], (x_, 565))
             pygame.display.update()
             start = True
             counter += 2
 
-    operate = Operate(args)
     fruit_found = False
 
     n_observed_markers = len(operate.ekf.taglist)
@@ -611,6 +633,7 @@ if __name__ == "__main__":
 
     operate.goals = search_list_pose
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    operate.aruco_true_pos = aruco_true_pos
 
     # a_star = AStarPlanner()
 
@@ -631,7 +654,7 @@ if __name__ == "__main__":
         operate.save_image()
         # operate.detect_target()
         # visualise
-        operate.draw(canvas)
+        operate.draw(operate.canvas)
         pygame.display.update()
 
     for i in range(len(operate.goals)):
@@ -655,51 +678,58 @@ if __name__ == "__main__":
             # input_waypoint_x = input("Input x coord:")
             # input_waypoint_y = input("Input y coord:")
             # waypoint = [input_waypoint_x, input_waypoint_y]
+            control_clock = time.time()
             waypoint = [rx[j], ry[j]]
 
-            dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
-            while dist > 0.05:
-                fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
-                dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if fruit_distance < 0.2:
-                    fruit_found = True
-                    break
-                if reset_robot_pose:
-                    if not operate.ekf.robot.state[2] <= 0.05:
-                        operate.notification = "Resetting robot pose"
-                        operate.reset_robot_pose()
-                        time.sleep(1)
-                        operate.notification = f"Finding the {fruits_list[i]}"
-                    else:
-                        reset_robot_pose = False
-                else:
-                    if int((time.time() - print_time)) % 2 == 0:
-                        print_time = time.time()
-                    print(f"next waypoint:{float(waypoint[0]):2f}, {float(waypoint[1]):2f}")
-                    print(f"Distance to waypoint: {dist}")
-                    print(f"Predicted robot position: {operate.ekf.robot.state[:2]}")
-                    operate.drive_to_point(waypoint)
+            # dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
+            # while dist > 0.05:
+            #     fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
+            #     dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
+            #     if fruit_distance < 0.2:
+            #         fruit_found = True
+            #         break
+            #     if reset_robot_pose:
+            #         if not operate.ekf.robot.state[2] <= 0.05:
+            #             operate.notification = "Resetting robot pose"
+            #             operate.reset_robot_pose()
+            #             time.sleep(1)
+            #             operate.notification = f"Finding the {fruits_list[i]}"
+            #         else:
+            #             reset_robot_pose = False
+            #     else:
+            #         if int((time.time() - print_time)) % 2 == 0:
+            #             print_time = time.time()
+            #         print(f"next waypoint:{float(waypoint[0]):2f}, {float(waypoint[1]):2f}")
+            #         print(f"Distance to waypoint: {dist}")
+            #         print(f"Predicted robot position: {operate.ekf.robot.state[:2]}")
+            #         operate.drive_to_point(waypoint)
 
-                operate.update_keyboard()
-                operate.take_pic()
+            robot_pose = move_to_waypoint(waypoint, robot_pose, operate, ip=args.ip)
+            then = time.time()
+            while time.time() - then < 5:
+                pass
+            print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,robot_pose))
 
-                # operate.detect_target()
+            # operate.update_keyboard()
+            # operate.take_pic()
 
-                drive_meas = operate.control()
-                operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
-                operate.ekf.taglist = tag_list
-                operate.ekf.markers = operate.markers
-                operate.update_slam(drive_meas)
-                robot_pose = operate.ekf.robot.state[:2]
-                operate.record_data()
-                operate.save_image()
-                # operate.detect_target()
-                # visualise
-                operate.draw(canvas)
-                pygame.display.update()
+            # # operate.detect_target()
 
-            operate.command['motion'] = [0,0]
-            operate.control()
+            # drive_meas = operate.control()
+            # operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
+            # operate.ekf.taglist = tag_list
+            # operate.ekf.markers = operate.markers
+            # operate.update_slam(drive_meas)
+            # robot_pose = operate.ekf.robot.state[:2]
+            # operate.record_data()
+            # operate.save_image()
+            # # operate.detect_target()
+            # # visualise
+            # operate.draw(operate.canvas)
+            # pygame.display.update()
+
+            # operate.command['motion'] = [0,0]
+            # operate.control()
             # at_waypoint = input("At fruit? (Y/N)")
             # if at_waypoint == "Y":
             #     break
