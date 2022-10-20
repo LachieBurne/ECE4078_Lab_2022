@@ -71,6 +71,7 @@ class Operate:
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+        self.pause_marker_update = False
 
     # wheel control
     def control(self):       
@@ -109,7 +110,7 @@ class Operate:
             if self.no_update_ekf:
                 pass
             else:
-                self.ekf.update(lms)
+                self.ekf.update(lms, self.pause_marker_update)
 
     # save images taken by the camera
     def save_image(self):
@@ -243,7 +244,12 @@ class Operate:
             ####################################################
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                self.command['motion'] = [0, 0]
+                if self.pause_marker_update == False:
+                    self.pause_marker_update = True
+                    self.notification = "Marker update paused"
+                else:
+                    self.pause_marker_update = False
+                    self.notification = "Marker update unpaused"
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True

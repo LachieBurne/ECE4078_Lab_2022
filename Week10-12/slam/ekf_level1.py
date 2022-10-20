@@ -21,7 +21,7 @@ class EKF:
 
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 0
         self.robot_init_state = None
         self.lm_pics = []
         for i in range(1, 11):
@@ -37,7 +37,7 @@ class EKF:
         self.taglist = []
         # Covariance matrix
         self.P = np.zeros((3,3))
-        self.init_lm_cov = 1e3
+        self.init_lm_cov = 0
         self.robot_init_state = None
 
     def number_landmarks(self):
@@ -48,21 +48,14 @@ class EKF:
             (self.robot.state, np.reshape(self.markers, (-1,1), order='F')), axis=0)
         return state
     
-    def set_state_vector(self, state, pause_markers=False):
+    def set_state_vector(self, state):
         self.robot.state = state[0:3,:]
-        if pause_markers == False:
-            self.markers = np.reshape(state[3:,:], (2,-1), order='F')
+        self.markers = np.reshape(state[3:,:], (2,-1), order='F')
     
     def save_map(self, fname="slam_map.txt"):
         if self.number_landmarks() > 0:
             utils = MappingUtils(self.markers, self.P[3:,3:], self.taglist)
             utils.save(fname)
-
-    def load_map(self, marker_list, taglist, P):
-        utils = MappingUtils(marker_list, P[3:,3:],taglist)
-        self.taglist = utils.taglist
-        self.markers = utils.markers
-        self.P = P
 
     def recover_from_pause(self, measurements):
         if not measurements:
@@ -94,22 +87,25 @@ class EKF:
     # the prediction step of EKF
     def predict(self, raw_drive_meas):
 
+        A = self.state_transition(raw_drive_meas)
         x = self.get_state_vector()
 
         # TODO: add your codes here to compute the predicted x
         self.robot.drive(raw_drive_meas)
-
-        A = self.state_transition(raw_drive_meas)
             
         Q = self.predict_covariance(raw_drive_meas)
             
         self.P = A @ self.P @ A.T + Q
 
+#         if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01): #The robot is within 0.01 unit square of the origin
+#             self.P = self.P * 0.7 # Reduce Uncertainty
 
     # the update step of EKF
-    def update(self, measurements, pause_markers=False):
+    def update(self, measurements):
         if not measurements:
             return
+        
+        x = self.get_state_vector()
         
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
@@ -118,15 +114,19 @@ class EKF:
         # Stack measurements and set covariance
         z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
         R = np.zeros((2*len(measurements),2*len(measurements)))
+        
+        # if (np.absolute(x[0]) < 0.01 and np.absolute(x[1]) < 0.01 and np.absolute(x[2]) < 0.1): #The robot is within 0.01 unit square of the origin
+        #     for i in range(len(measurements)):
+        #         R[2*i:2*i+2,2*i:2*i+2] = 0.00001
+        # else:
         for i in range(len(measurements)):
             R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
-            
+            # print(f"[ekf][update][measurements[i].covariance]{measurements[i].covariance}")
 
         # Compute own measurements
         z_hat = self.robot.measure(self.markers, idx_list)
         z_hat = z_hat.reshape((-1,1),order="F")
         C = self.robot.derivative_measure(self.markers, idx_list)
-        x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x
         S = C @ self.P @ C.T + R
@@ -135,11 +135,13 @@ class EKF:
         # Correct the state
         y = z - z_hat
         x = x + K @ y
+        # print(f"[ekf][update][z_hat]\n{z_hat}")
+        # print(f"[ekf][update][z]{z}\n")
 
         # Correct covariance
         self.P = (np.eye(x.shape[0]) - K @ C) @ self.P
 
-        self.set_state_vector(x, pause_markers)
+        self.set_state_vector(x)
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
@@ -150,7 +152,11 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
         Q = np.zeros((n,n))
-        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.01*np.eye(3)
+        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) + 1e-10
+        # print(f"[ekf][predict_covariance][Q]\n")
+        # print(f"{Q[0]}")
+        # print(f"{Q[1]}")
+        # print(f"{Q[2]}")
         return Q
 
     def add_landmarks(self, measurements):
@@ -167,11 +173,12 @@ class EKF:
                 # ignore known tags
                 continue
             
-            lm_bff = lm.position
-            lm_inertial = robot_xy + R_theta @ lm_bff
+            ## code not needed: it converts from the robot frame to world frame [M5 may need]
+            # lm_bff = lm.position
+            # lm_inertial = robot_xy + R_theta @ lm_bff
 
             self.taglist.append(int(lm.tag))
-            self.markers = np.concatenate((self.markers, lm_inertial), axis=1)
+            self.markers = np.concatenate((self.markers, lm.position[:, None]), axis=1)
 
             # Create a simple, large covariance to be fixed by the update step
             self.P = np.concatenate((self.P, np.zeros((2, self.P.shape[1]))), axis=0)
@@ -300,5 +307,3 @@ class EKF:
         else:
             angle = 0
         return (axes_len[0], axes_len[1]), angle
-
- 

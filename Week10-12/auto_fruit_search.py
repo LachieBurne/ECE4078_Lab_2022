@@ -15,7 +15,7 @@ import pygame
 
 # import SLAM components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
+from slam.ekf_level1 import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 

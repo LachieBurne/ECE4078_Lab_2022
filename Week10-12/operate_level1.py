@@ -16,14 +16,14 @@ import shutil # python package for file operations
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
+from slam.ekf_level1 import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 
 # import CV components
 sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
-from network.scripts.detector import Detector
+# from network.scripts.detector import Detector
 
 
 class Operate:
@@ -73,6 +73,7 @@ class Operate:
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.detector_output = np.zeros([240,320], dtype=np.uint8)
+        args.ckpt = ""
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -127,6 +128,7 @@ class Operate:
 
     # using computer vision to detect targets
     def detect_target(self):
+        self.detector = None
         if self.command['inference'] and self.detector is not None:
             self.detector_output, self.network_vis = self.detector.detect_single_image(self.img)
             self.command['inference'] = False
