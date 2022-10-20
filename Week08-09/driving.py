@@ -146,7 +146,7 @@ def get_robot_pose(operate, dt=None):
     operate.ekf.markers = operate.markers
     operate.record_data()
     operate.save_image()
-    operate.detect_target()
+    # operate.detect_target()
     # visualise
     operate.draw(operate.canvas)
     pygame.display.update()

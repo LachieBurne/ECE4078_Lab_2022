@@ -232,7 +232,7 @@ class RRTC:
 def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx):
     obstacles = []
     fruit_safety = 0.15
-    aruco_safety = 0.15
+    aruco_safety = 0.2
 
     for fruit in fruit_true_pos:
         for i, pose in enumerate(search_list_pose):

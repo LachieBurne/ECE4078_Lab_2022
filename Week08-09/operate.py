@@ -62,6 +62,7 @@ class Operate:
                         'output': False,
                         'save_inference': False,
                         'save_image': False}
+        self.args = args
 
         self.quit = False
         self.pred_fname = ''
@@ -644,7 +645,7 @@ if __name__ == "__main__":
     while operate.no_planning:
         operate.update_keyboard()
         operate.take_pic()
-        drive_meas = operate.control()
+        drive_meas = operate.control(None)
         operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
         operate.ekf.taglist = tag_list
         operate.ekf.markers = operate.markers
