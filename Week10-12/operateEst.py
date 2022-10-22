@@ -22,6 +22,10 @@ from slam.ekf import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 
+# import CV components
+sys.path.insert(0, "{}/network/".format(os.getcwd()))
+sys.path.insert(0, "{}/network/scripts".format(os.getcwd()))
+from network.scripts.detector import Detector
 
 class Operate:
     def __init__(self, args):
@@ -39,7 +43,7 @@ class Operate:
             self.pibot = PenguinPi(args.ip, args.port)
 
         # initialise SLAM parameters
-        self.ekf = self.init_ekf(args.calib_dir, args.ip, sim=args.using_sim)
+        self.ekf = self.init_ekf(args.calib_dir, args.ip)
         self.aruco_det = aruco.aruco_detector(
             self.ekf.robot, marker_length = 0.07) # size of the ARUCO markers
 
@@ -65,27 +69,33 @@ class Operate:
         self.count_down = 300
         self.start_time = time.time()
         self.control_clock = time.time()
-        self.no_update_ekf = False
         self.previous_img = None
         # initialise images
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
+        self.detector_output = np.zeros([240, 320], dtype=np.uint8)
+        if args.ckpt == "":
+            self.detector = None
+            self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
+        else:
+            self.detector = Detector(args.ckpt, use_gpu=False)
+            self.network_vis = np.ones((240, 320, 3)) * 100
         self.bg = pygame.image.load('pics/gui_mask.jpg')
-        self.pause_marker_update = False
+        
+        # Various flags
+        self.next_stage = True
 
     # wheel control
     def control(self):       
-        if args.play_data:
-            lv, rv = self.pibot.set_velocity()            
-        else:
-            lv, rv = self.pibot.set_velocity(
-                self.command['motion'])
+        lv, rv = self.pibot.set_velocity(
+            self.command['motion'])
         if not self.data is None:
             self.data.write_keyboard(lv, rv)
         dt = time.time() - self.control_clock
         drive_meas = measure.Drive(lv, rv, dt)
         self.control_clock = time.time()
         return drive_meas
+
     # camera control
     def take_pic(self):
         self.img = self.pibot.get_image()
@@ -107,10 +117,7 @@ class Operate:
         elif self.ekf_on: # and not self.debug_flag:
             self.ekf.predict(drive_meas)
             self.ekf.add_landmarks(lms)
-            if self.no_update_ekf:
-                pass
-            else:
-                self.ekf.update(lms, self.pause_marker_update)
+            self.ekf.update(lms)
 
     # save images taken by the camera
     def save_image(self):
@@ -140,8 +147,8 @@ class Operate:
 	        ##########################################################################
 
     # wheel and camera calibration for SLAM
-    def init_ekf(self, datadir, ip, sim=False):
-        if not sim:
+    def init_ekf(self, datadir, ip):
+        if ip != "localhost":
             fileK = "{}intrinsic.txt".format(datadir)
             camera_matrix = np.loadtxt(fileK, delimiter=',')
             fileD = "{}distCoeffs.txt".format(datadir)
@@ -178,35 +185,41 @@ class Operate:
         text_colour = (220, 220, 220)
         v_pad = 40
         h_pad = 20
+        TEXT_FONT = pygame.font.Font('pics/8-BitMadness.ttf', 40)
 
         # paint SLAM outputs
-        ekf_view = self.ekf.draw_slam_state(res=(320, 480+v_pad),
-            not_pause = self.ekf_on)
-        canvas.blit(ekf_view, (2*h_pad+320, v_pad))
+        ekf_view = self.ekf.draw_slam_state(res=(320, 480 + v_pad),
+                                            not_pause=self.ekf_on)
+        canvas.blit(ekf_view, (2 * h_pad + 320, v_pad))
         robot_view = cv2.resize(self.aruco_img, (320, 240))
-        self.draw_pygame_window(canvas, robot_view, 
+        self.draw_pygame_window(canvas, robot_view,
                                 position=(h_pad, v_pad)
                                 )
 
+        # for target detector (M3)
+        detector_view = cv2.resize(self.network_vis,
+                                   (320, 240), cv2.INTER_NEAREST)
+        self.draw_pygame_window(canvas, detector_view,
+                                position=(h_pad, 240 + 2 * v_pad)
+                                )
+
         # canvas.blit(self.gui_mask, (0, 0))
-        self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad)) # M2
-        self.put_caption(canvas, caption='Detector (M3)',
-                         position=(h_pad, 240+2*v_pad)) # M3
+        self.put_caption(canvas, caption='SLAM', position=(2 * h_pad + 320, v_pad))
+        self.put_caption(canvas, caption='Detector',
+                         position=(h_pad, 240 + 2 * v_pad))
         self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad))
 
-        notifiation = TEXT_FONT.render(self.notification,
-                                          False, text_colour)
-        canvas.blit(notifiation, (h_pad+10, 596))
+        notification = TEXT_FONT.render(self.notification,
+                                       False, text_colour)
+        canvas.blit(notification, (h_pad, 580))
 
         time_remain = self.count_down - time.time() + self.start_time
         if time_remain > 0:
             time_remain = f'Count Down: {time_remain:03.0f}s'
-        elif int(time_remain)%2 == 0:
-            time_remain = "Time Is Up !!!"
         else:
             time_remain = ""
         count_down_surface = TEXT_FONT.render(time_remain, False, (50, 50, 50))
-        canvas.blit(count_down_surface, (2*h_pad+320+5, 530))
+        canvas.blit(count_down_surface, (2 * h_pad + 320 + 5, 530))
         return canvas
 
     @staticmethod
@@ -244,12 +257,8 @@ class Operate:
             ####################################################
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                if self.pause_marker_update == False:
-                    self.pause_marker_update = True
-                    self.notification = "Marker update paused"
-                else:
-                    self.pause_marker_update = False
-                    self.notification = "Marker update unpaused"
+                # Continue to next stage of final demo
+                self.next_stage = True
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
@@ -301,9 +310,9 @@ if __name__ == "__main__":
     parser.add_argument("--ip", metavar='', type=str, default='localhost')
     parser.add_argument("--port", metavar='', type=int, default=40000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
+    parser.add_argument("--ckpt", default='network/scripts/model/best_sim.pt')
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--using_sim", action='store_true')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
@@ -342,11 +351,6 @@ if __name__ == "__main__":
     while start:
         operate.update_keyboard()
         operate.take_pic()
-        operate.previous_image = operate.img
-        if np.array_equal(operate.img, operate.previous_img):
-            operate.no_update_ekf = True
-        else:
-            operate.no_update_ekf = False
         drive_meas = operate.control()
         operate.update_slam(drive_meas)
         operate.record_data()

@@ -30,6 +30,7 @@ class EKF:
         f_ = f'./pics/8bit/lm_unknown.png'
         self.lm_pics.append(pygame.image.load(f_))
         self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
+        self.mapping = True
         
     def reset(self):
         self.robot.state = np.zeros((3, 1))
@@ -48,10 +49,9 @@ class EKF:
             (self.robot.state, np.reshape(self.markers, (-1,1), order='F')), axis=0)
         return state
     
-    def set_state_vector(self, state, pause_markers=False):
+    def set_state_vector(self, state):
         self.robot.state = state[0:3,:]
-        if pause_markers == False:
-            self.markers = np.reshape(state[3:,:], (2,-1), order='F')
+        self.markers = np.reshape(state[3:,:], (2,-1), order='F')
     
     def save_map(self, fname="slam_map.txt"):
         if self.number_landmarks() > 0:
@@ -107,7 +107,7 @@ class EKF:
 
 
     # the update step of EKF
-    def update(self, measurements, pause_markers=False):
+    def update(self, measurements):
         if not measurements:
             return
         
@@ -139,7 +139,7 @@ class EKF:
         # Correct covariance
         self.P = (np.eye(x.shape[0]) - K @ C) @ self.P
 
-        self.set_state_vector(x, pause_markers)
+        self.set_state_vector(x)
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
@@ -150,7 +150,10 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
         Q = np.zeros((n,n))
-        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.01*np.eye(3)
+        if self.mapping:
+            Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.005*np.eye(3)
+        else:
+            Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) #+ 0.001*np.eye(3)
         return Q
 
     def add_landmarks(self, measurements):
