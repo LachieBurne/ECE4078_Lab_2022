@@ -1,0 +1,14 @@
+material GroundPlane/Image
+{
+  technique
+  {
+    pass
+    {
+
+      texture_unit
+      {
+        texture texture_ECE4078.jpeg
+      }
+    }
+  }
+}
