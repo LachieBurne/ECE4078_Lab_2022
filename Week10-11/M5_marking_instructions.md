@@ -60,9 +60,10 @@ There 2 key tasks, mapping (ArUco markers + fruits locations) and fruit searchin
 7. You may now attempt the 2 key tasks in whatever sequence, as many times as you want within the time limit
 
 8. You should rename the ```slam.txt``` and the ```targets.txt``` files after each attempt, please use the following naming format:
-    - slam_{attempt_no}_{team_no}.txt, e.g. slam_1_301.txt
-    - targets_{attempt_no}_{team_no}.txt, e.g. targets_1_301.txt
+    - slam_{robot/sim}\_{attempt_no}_{team_no}.txt, e.g. slam_robot_1_301.txt
+    - targets_{robot/sim}\_{attempt_no}_{team_no}.txt, e.g. targets_robot_1_301.txt
     - you may receive zero score by failing to follow this naming format
+    - You should also have two different folders to store the maps, one named "robot" and another one named "sim". <span style="color:red">Make sure you do not mix up the sim and robot maps</span>
 
 9. **[SIM ONLY]** You may use the [mapping_eval.py](mapping_eval.py) to check your mapping performance if you want
 
@@ -71,10 +72,7 @@ There 2 key tasks, mapping (ArUco markers + fruits locations) and fruit searchin
 
 #### Step 4:
 **Right after marking**
-1. zip all your map files, ```slam.txt``` and the ```targets.txt``` **in a folder** named M5_maps_{team_number} (e.g. M5_maps_404), your zip file should have the same name, M5_maps_{team_number}.zip. Remember your map file should have the following naming format:
-    - slam_{attempt_no}_{team_no}.txt, e.g. slam_1_301.txt
-    - targets_{attempt_no}_{team_no}.txt, e.g. targets_1_301.txt
-    - you may receive zero score by failing to follow this naming format
+1. zip all your "sim" and "robot" map folders, which contains all your ```slam.txt``` and the ```targets.txt``` file, and put them in a folder named M5_maps_{team_number} (e.g. M5_maps_404), your zip file should have the same name, M5_maps_{team_number}.zip. 
 2. Upload the M5_maps_{team_number}.zip to the Moodle map submission box
 ---
 ### Zoom marking
@@ -129,8 +127,8 @@ There 2 key tasks, mapping (ArUco markers + fruits locations) and fruit searchin
 7. You may now attempt the 2 key tasks in whatever sequence, as many times as you want within the time limit
 
 8. You should rename the ```slam.txt``` and the ```targets.txt``` files after each attempt, please use the following naming format:
-    - slam_{attempt_no}_{team_no}.txt, e.g. slam_1_301.txt
-    - targets_{attempt_no}_{team_no}.txt, e.g. targets_1_301.txt
+    - slam_{attempt_no}_{team_no}.txt, e.g. slam_sim_1_301.txt
+    - targets_{attempt_no}_{team_no}.txt, e.g. targets_sim_1_301.txt
     - you may receive zero score by failing to follow this naming format
 
 9. You may use the [mapping_eval.py](mapping_eval.py) to check your mapping performance if you want
@@ -141,7 +139,7 @@ There 2 key tasks, mapping (ArUco markers + fruits locations) and fruit searchin
 #### Step 4:
 **Right after marking**
 1. zip all your map files, ```slam.txt``` and the ```targets.txt``` **in a folder** named M5_maps_{team_number} (e.g. M5_maps_404), your zip file should have the same name, M5_maps_{team_number}.zip. Remember your map file should have the following naming format:
-    - slam_{attempt_no}_{team_no}.txt, e.g. slam_1_301.txt
-    - targets_{attempt_no}_{team_no}.txt, e.g. targets_1_301.txt
+    - slam_sim_{attempt_no}_{team_no}.txt, e.g. slam_sim_1_301.txt
+    - targets_sim_{attempt_no}_{team_no}.txt, e.g. targets_sim_1_301.txt
     - you may receive zero score by failing to follow this naming format
 2. Upload the M5_maps_{team_number}.zip to the Moodle map submission box
