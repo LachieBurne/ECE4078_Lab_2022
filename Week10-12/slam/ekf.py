@@ -153,7 +153,7 @@ class EKF:
         if self.mapping:
             Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.005*np.eye(3)
         else:
-            Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) #+ 0.001*np.eye(3)
+            Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) # + 8e-5*np.eye(3)
         return Q
 
     def add_landmarks(self, measurements):

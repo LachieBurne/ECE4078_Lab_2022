@@ -1,4 +1,5 @@
 # estimate the pose of a target object detected
+from re import search
 import numpy as np
 import json
 import os
@@ -60,24 +61,6 @@ def unpack_image(image):
         yolo_stuff.append(get_YOLO_stuff(fruit_data))
 
     return yolo_stuff
-
-
-# # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
-# def get_bounding_box(target_number, image_path):
-#     image = PIL.Image.open(image_path).resize((640,480), PIL.Image.NEAREST)
-#     target = Image(image)==target_number
-#     blobs = target.blobs()
-#     [[u1,u2],[v1,v2]] = blobs[0].bbox # bounding box
-#     width = abs(u1-u2)
-#     height = abs(v1-v2)
-#     center = np.array(blobs[0].centroid).reshape(2,)
-#     box = [center[0], center[1], int(width), int(height)] # box=[x,y,width,height]
-#     # plt.imshow(fruit.image)
-#     # plt.annotate(str(fruit_number), np.array(blobs[0].centroid).reshape(2,))
-#     # plt.show()
-#     # assert len(blobs) == 1, "An image should contain only one object of each target type"
-#     return box
-
 
 # read in the list of detection results with bounding boxes and their matching robot pose info
 def get_image_info(base_dir, file_path, image_poses):
@@ -220,7 +203,7 @@ def merge_to_mean(position_est, remove_outlier = False):
     return new_mean
 
 
-def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False, use_Kmeans = False):
+def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outlier = False, use_Kmeans = False, num_clust = 0):
 
     # Inputs:
     # position_est : An numpy array of coordinates {position_est[estimation #][0 = x, 1 = y]}
@@ -238,7 +221,7 @@ def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outl
 
         if(use_Kmeans):
 
-            kmeans = KMeans(n_clusters = 2)
+            kmeans = KMeans(n_clusters = num_clust)
             kmeans.fit(position_est)
             if(kmeans.labels_[i] == 0):
                 position_est1.append(position_est[i])
@@ -274,7 +257,7 @@ def sort_locations_and_merge(position_est, distance_threshold = 0.3, remove_outl
         
 
 # merge the estimations of the targets so that there are at most 3 estimations of each target type
-def merge_estimations(target_pose_dict):
+def merge_estimations(target_pose_dict, search_list):
     target_map = target_pose_dict
     apple_est, lemon_est, pear_est, orange_est, strawberry_est = [], [], [], [], []
     target_est = {}
@@ -298,15 +281,49 @@ def merge_estimations(target_pose_dict):
     remove_outlier = False
     use_Kmeans = False
     if len(apple_est) > 1:
-        apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        if "apple" in search_list:
+            num_clust = 1
+            apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+        else:
+            if len(apple_est) > 2:
+                num_clust = 2
+                apple_est = sort_locations_and_merge(apple_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+
     if len(lemon_est) > 1:
-        lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        if "lemon" in search_list:
+            num_clust = 1
+            lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+        else:
+            if len(lemon_est) > 2:
+                num_clust = 2
+                lemon_est = sort_locations_and_merge(lemon_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+
     if len(pear_est) > 1:
-        pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        if "pear" in search_list:
+            num_clust = 1
+            pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+        else:
+            if len(pear_est) > 2:
+                num_clust = 2
+                pear_est = sort_locations_and_merge(pear_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+
     if len(orange_est) > 1:
-        orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        if "orange" in search_list:
+            num_clust = 1
+            orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+        else:
+            if len(orange_est) > 2:
+                num_clust = 2
+                orange_est = sort_locations_and_merge(orange_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+
     if len(strawberry_est) > 1:
-        strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans)
+        if "strawberry" in search_list:
+            num_clust = 1
+            strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
+        else:
+            if len(strawberry_est) > 2:
+                num_clust = 2
+                strawberry_est = sort_locations_and_merge(strawberry_est, distance_threshold = 0.3, remove_outlier = remove_outlier, use_Kmeans = use_Kmeans, num_clust=num_clust)
 
     for i in range(2):
         try:
@@ -335,6 +352,12 @@ def merge_estimations(target_pose_dict):
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--using_sim", action='store_true')
+    args, _ = parser.parse_known_args()
+    USING_SIM = args.using_sim
 
     weights_filename = 'best_sim.pt' if USING_SIM else 'best_real.pt'
     weight_path = f'final_weights/{weights_filename}'
@@ -371,8 +394,16 @@ if __name__ == "__main__":
         completed_img_dict = get_image_info(base_dir, file_path, image_poses)
         target_map[file_path] = estimate_pose(base_dir, camera_matrix, completed_img_dict)
 
+    search_list = []
+    with open("search_list.txt", 'r') as fd:
+        fruits = fd.readlines()
+
+        for fruit in fruits:
+            search_list.append(fruit.strip())
+
+
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
-    target_est = merge_estimations(target_map)
+    target_est = merge_estimations(target_map, search_list)
                      
     # save target pose estimations
     with open(base_dir/'lab_output/targets.txt', 'w') as fo:
