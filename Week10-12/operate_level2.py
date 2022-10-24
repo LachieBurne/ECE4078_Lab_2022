@@ -198,7 +198,7 @@ class Operate:
 
         # paint SLAM outputs
         ekf_view = self.ekf.draw_slam_state(res=(320, 480 + v_pad),
-                                            not_pause=self.ekf_on)
+                                            not_pause=self.ekf_on, fruits=self.fruits)
         canvas.blit(ekf_view, (2 * h_pad + 320, v_pad))
         robot_view = cv2.resize(self.aruco_img, (320, 240))
         self.draw_pygame_window(canvas, robot_view,

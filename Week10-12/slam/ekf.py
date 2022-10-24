@@ -246,7 +246,6 @@ class EKF:
         lms_xy = self.markers[:2, :]
         robot_xy = self.robot.state[:2, 0].reshape((2, 1))
         lms_xy = lms_xy - robot_xy
-        robot_xy = robot_xy*0
         robot_theta = self.robot.state[2,0]
         # plot robot
         start_point_uv = self.to_im_coor((0, 0), res, m2pixel)
@@ -284,14 +283,10 @@ class EKF:
                     (coor_[0]-5, coor_[1]-5))
 
         robot_xy = robot_xy.T[0]
-        print(robot_xy)
         if fruits is not None:
             for fruit in fruits:
                 fruit_xy = np.array(fruit[1])
-                print(fruit_xy)
                 fruit_xy =  fruit_xy - robot_xy
-                xy = (fruit_xy[0, 0], fruit_xy[0, 1])
-                print(xy)
                 xy = (fruit_xy[0], fruit_xy[1])
                 coor_ = self.to_im_coor(xy, res, m2pixel)
                 surface.blit(self.fruit_pics[fruit[0]],
