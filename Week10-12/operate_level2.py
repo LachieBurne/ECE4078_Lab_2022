@@ -91,6 +91,7 @@ class Operate:
         self.tags = []
         self.goals = []
         self.start = False
+        self.fruits = []
         
         self.no_planning = True
 
@@ -197,7 +198,7 @@ class Operate:
 
         # paint SLAM outputs
         ekf_view = self.ekf.draw_slam_state(res=(320, 480 + v_pad),
-                                            not_pause=self.ekf_on)
+                                            not_pause=self.ekf_on, fruits=self.fruits)
         canvas.blit(ekf_view, (2 * h_pad + 320, v_pad))
         robot_view = cv2.resize(self.aruco_img, (320, 240))
         self.draw_pygame_window(canvas, robot_view,
@@ -337,7 +338,7 @@ class Operate:
         print("--------Search order: ", fruit_list_e, "--------")
         # time.sleep(3)
 
-        return fruit_list_e, fruit_true_pos, aruco_true_pos, search_list_pose
+        return fruit_list_e, fruit_true_pos, aruco_true_pos, search_list_pose, fruit_list
 
     def read_search_list(self, args):
         """Read the search order of the target fruits
@@ -609,7 +610,7 @@ if __name__ == "__main__":
         else:
             operate.notification = 'SLAM is paused'
 
-    fruits_list, fruit_true_pos, aruco_true_pos, search_list_pose = operate.read_true_map(args)
+    fruits_list, fruit_true_pos, aruco_true_pos, search_list_pose, full_fruits_list = operate.read_true_map(args)
 
     operate.goals = search_list_pose
     operate.tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -619,6 +620,9 @@ if __name__ == "__main__":
     for i, fruit in enumerate(fruits_list):
         print(f"Fruit: {fruit}")
         print(f"Coords: {operate.goals[i]}")
+
+    for i, fruit in enumerate(full_fruits_list):
+        operate.fruits.append([fruit,(fruit_true_pos[i][0],fruit_true_pos[i][1])])
 
     # while operate.no_planning:
     operate.update_keyboard()
