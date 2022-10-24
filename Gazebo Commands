@@ -1,8 +1,6 @@
-source ~/catkin_ws/devel/setup.bash
-roslaunch penguinpi_gazebo ECE4078.launch
+source ~/catkin_ws/devel/setup.bash;roslaunch penguinpi_gazebo ECE4078.launch
 
 
-source ~/catkin_ws/devel/setup.bash
-rosrun penguinpi_gazebo scene_manager.py -l M5map2.txt
+source ~/catkin_ws/devel/setup.bash;rosrun penguinpi_gazebo scene_manager.py -l M5map2.txt
 
 

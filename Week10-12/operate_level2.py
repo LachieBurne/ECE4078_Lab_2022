@@ -416,7 +416,7 @@ class Operate:
 
     def drive_to_point(self, waypoint):
 
-        threshold_angle = 0.1
+        threshold_angle = 0.01
 
         x_r = self.ekf.robot.state[0]
         y_r = self.ekf.robot.state[1]
@@ -446,14 +446,14 @@ class Operate:
         if abs(theta_turn) >= threshold_angle:
             if y_diff >= 0:
                 if theta_turn > 0:
-                    self.command['motion'] = [0, 2]
+                    self.command['motion'] = [0, 1]
                 else:
-                    self.command['motion'] = [0, -2]
+                    self.command['motion'] = [0, -1]
             else:
                 if theta_turn <= 0:
-                    self.command['motion'] = [0, -2]
+                    self.command['motion'] = [0, -1]
                 else:
-                    self.command['motion'] = [0, 2]
+                    self.command['motion'] = [0, 1]
         else:
             self.command['motion'] = [1, 0]
 
@@ -466,9 +466,9 @@ class Operate:
                 angle += 2 * np.pi
 
         if angle < 0:
-            self.command['motion'] = [0, 2]
+            self.command['motion'] = [0, 1]
         else:
-            self.command['motion'] = [0, -2]
+            self.command['motion'] = [0, -1]
 
 
 # ## Kelvin Added ##########################
@@ -620,21 +620,21 @@ if __name__ == "__main__":
         print(f"Fruit: {fruit}")
         print(f"Coords: {operate.goals[i]}")
 
-    while operate.no_planning:
-        operate.update_keyboard()
-        operate.take_pic()
-        drive_meas = operate.control()
-        operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
-        operate.ekf.taglist = tag_list
-        operate.ekf.markers = operate.markers
-        operate.update_slam(drive_meas)
-        robot_pose = operate.ekf.robot.state[:2]
-        # operate.record_data()
-        # operate.save_image()
-        # operate.detect_target()
-        # visualise
-        operate.draw(canvas)
-        pygame.display.update()
+    # while operate.no_planning:
+    operate.update_keyboard()
+    operate.take_pic()
+    drive_meas = operate.control()
+    operate.markers, tag_list = operate.update_markers(operate.ekf.taglist, aruco_true_pos, operate.tags)
+    operate.ekf.taglist = tag_list
+    operate.ekf.markers = operate.markers
+    operate.update_slam(drive_meas)
+    robot_pose = operate.ekf.robot.state[:2]
+    # operate.record_data()
+    # operate.save_image()
+    # operate.detect_target()
+    # visualise
+    operate.draw(canvas)
+    pygame.display.update()
 
     for i in range(len(operate.goals)):
         operate.notification = f"Finding the {fruits_list[i]}"
@@ -662,21 +662,23 @@ if __name__ == "__main__":
             waypoint = [rx[j], ry[j]]
 
             dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
-            while dist > 0.05:
+            while dist > 0.01:
                 fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
                 if fruit_distance < 0.25:
                     fruit_found = True
                     break
                 if reset_robot_pose:
-                    if operate.ekf.robot.state[2] > 0.05:
+                    if abs(operate.ekf.robot.state[2]) > 0.01:
                         operate.notification = "Resetting robot pose"
                         operate.reset_robot_pose()
                         
                     else:
                         reset_robot_pose = False
-                        operate.pibot.set_velocity([0,0])
-                        time.sleep(2)
+                        operate.command['motion'] = [0,0]
+                        drive_meas = operate.control()
+                        operate.update_slam(drive_meas)
+                        time.sleep(1)
                         operate.notification = f"Finding the {fruits_list[i]}"
                 else:
                     if int((time.time() - print_time)) % 2 == 0:
