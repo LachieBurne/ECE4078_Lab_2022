@@ -238,7 +238,9 @@ def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx):
         print(f'fruit_pos={fruit_pos}')
         print(f'search_pose={search_list_pose[idx]}')
         # If the search fruit is the position or (last fruit is in the position (for second or more fruit))
-        if search_list_pose[idx].tolist() != fruit_pos.tolist() or (idx > 0 and search_list_pose[idx-1].tolist() != search_list_pose.tolist()):
+        if search_list_pose[idx].tolist() == fruit_pos.tolist() or (idx > 0 and search_list_pose[idx-1].tolist() == fruit_pos.tolist()):
+            continue
+        else:
             obstacles.append(Circle(fruit_pos[0],fruit_pos[1],fruit_safety))      
 
     for arucos in aruco_true_pos:
