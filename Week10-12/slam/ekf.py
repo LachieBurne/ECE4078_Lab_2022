@@ -31,6 +31,10 @@ class EKF:
         self.lm_pics.append(pygame.image.load(f_))
         self.pibot_pic = pygame.image.load(f'./pics/8bit/pibot_top.png')
         self.mapping = True
+        self.fruit_pics = {}
+        for fruit in ['apple', 'pear', 'orange', 'lemon', 'strawberry']:
+            f_ = f'./pics/8bit/{fruit}.png'
+            self.fruit_pics[fruit] = (pygame.image.load(f_))
         
     def reset(self):
         self.robot.state = np.zeros((3, 1))
@@ -230,7 +234,7 @@ class EKF:
         y_im = int(y*m2pixel+h/2.0)
         return (x_im, y_im)
 
-    def draw_slam_state(self, res = (320, 500), not_pause=True):
+    def draw_slam_state(self, res = (320, 500), not_pause=True, fruits=None):
         # Draw landmarks
         m2pixel = 100
         if not_pause:
@@ -278,6 +282,21 @@ class EKF:
                 except IndexError:
                     surface.blit(self.lm_pics[-1],
                     (coor_[0]-5, coor_[1]-5))
+
+        robot_xy = robot_xy.T[0]
+        print(robot_xy)
+        if fruits is not None:
+            for fruit in fruits:
+                fruit_xy = np.array(fruit[1])
+                print(fruit_xy)
+                fruit_xy =  fruit_xy - robot_xy
+                xy = (fruit_xy[0, 0], fruit_xy[0, 1])
+                print(xy)
+                xy = (fruit_xy[0], fruit_xy[1])
+                coor_ = self.to_im_coor(xy, res, m2pixel)
+                surface.blit(self.fruit_pics[fruit[0]],
+                             (coor_[0] - 5, coor_[1] - 5))
+
         return surface
 
     @staticmethod
