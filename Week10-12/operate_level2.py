@@ -94,6 +94,8 @@ class Operate:
         self.fruits = []
         
         self.no_planning = True
+        self.threshold_angle = (np.pi/180)
+        self.distance_threshold = 0.01
 
     # wheel control
     def control(self):
@@ -132,6 +134,20 @@ class Operate:
             self.ekf.add_landmarks(lms)
             self.ekf.update(lms)
 
+            # print(lms)
+            # marker_pos = []
+            # for i in range(len(lms)):
+            #     marker_pos.append(np.array(lms[i].position))
+            #     print(np.array(lms[i].position))
+            # marker_pos = np.array(marker_pos)
+            # print(marker_pos.shape)
+            # mean_pos = np.mean(marker_pos, axis=0)
+            # print(mean_pos)
+            # print(mean_pos.shape)
+
+            
+            # time.sleep(5)
+
     # using computer vision to detect targets
     def detect_target(self):
         if self.command['inference'] and self.detector is not None:
@@ -154,17 +170,19 @@ class Operate:
 
     # wheel and camera calibration for SLAM
     def init_ekf(self, datadir, ip):
-        fileK = "{}intrinsic.txt".format(datadir)
-        camera_matrix = np.loadtxt(fileK, delimiter=',')
         fileD = "{}distCoeffs.txt".format(datadir)
         dist_coeffs = np.loadtxt(fileD, delimiter=',')
         if ip == 'localhost':
+            fileK = "{}intrinsic_sim.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
             fileS = "{}scale_sim.txt".format(datadir)
             scale = np.loadtxt(fileS, delimiter=',')
             fileB = "{}baseline_sim.txt".format(datadir)
             baseline = np.loadtxt(fileB, delimiter=',')
             scale /= 2
         else:
+            fileK = "{}intrinsic.txt".format(datadir)
+            camera_matrix = np.loadtxt(fileK, delimiter=',')
             fileS = "{}scale.txt".format(datadir)
             scale = np.loadtxt(fileS, delimiter=',')
             fileB = "{}baseline.txt".format(datadir)
@@ -417,8 +435,6 @@ class Operate:
 
     def drive_to_point(self, waypoint):
 
-        threshold_angle = 0.01
-
         x_r = self.ekf.robot.state[0]
         y_r = self.ekf.robot.state[1]
         x_w = float(waypoint[0])
@@ -441,10 +457,18 @@ class Operate:
         ## Angle needs to turn = Angle diff from robot - robot pose in world
         theta_turn = theta_diff - theta_r
 
+        ## limit theta_r between -pi and pi
+
+        while (abs(theta_turn) > np.pi):
+            if theta_turn > 0:
+                theta_turn -= 2 * np.pi
+            else:
+                theta_turn += 2 * np.pi
+
         if int((time.time() - print_time)) % 2 == 0:
             print("Theta to turn: " + str(theta_turn)[1:6] + " and current robot pose: " + str(theta_r)[1:6])
 
-        if abs(theta_turn) >= threshold_angle:
+        if abs(theta_turn) >= self.threshold_angle:
             if y_diff >= 0:
                 if theta_turn > 0:
                     self.command['motion'] = [0, 1]
@@ -466,10 +490,12 @@ class Operate:
             else:
                 angle += 2 * np.pi
 
-        if angle < 0:
-            self.command['motion'] = [0, 1]
-        else:
+        # self.turning_tick = int(abs(angle)*4 + 4)
+
+        if angle > 0:
             self.command['motion'] = [0, -1]
+        else:
+            self.command['motion'] = [0, 1]
 
 
 # ## Kelvin Added ##########################
@@ -639,12 +665,12 @@ if __name__ == "__main__":
     # visualise
     operate.draw(canvas)
     pygame.display.update()
-
+    
     for i in range(len(operate.goals)):
         operate.notification = f"Finding the {fruits_list[i]}"
         reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
-        obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i)
+        obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i, state)
         rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
         # print(operate.ekf.markers)
         # a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.ekf.markers, unknown_obs=operate.unknown_obs)
@@ -655,10 +681,12 @@ if __name__ == "__main__":
         operate.notification = "Planning path"
         rx, ry = rrt.planning()
         print(rx, ry)
+        time.sleep(2)
 
         robot_pose = [state[0],state[1]]
 
         for j in range(len(rx)):
+            start_waypoint_time = time.time()
             operate.notification = f"Finding the {fruits_list[i]}"
             # input_waypoint_x = input("Input x coord:")
             # input_waypoint_y = input("Input y coord:")
@@ -666,10 +694,10 @@ if __name__ == "__main__":
             waypoint = [rx[j], ry[j]]
 
             dist = get_distance_robot_to_goal(robot_pose,np.array([waypoint[0],waypoint[1]]))
-            while dist > 0.01:
+            while dist > operate.distance_threshold:
                 fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if fruit_distance < 0.25:
+                if fruit_distance < 0.3:
                     fruit_found = True
                     break
                 if reset_robot_pose:
@@ -709,6 +737,15 @@ if __name__ == "__main__":
                 # visualise
                 operate.draw(canvas)
                 pygame.display.update()
+
+                current_waypoint_time = time.time()
+                if current_waypoint_time - start_waypoint_time > 20 and len(rx) == j+1:
+                    operate.threshold_angle = (np.pi/180) * 5
+                    operate.distance_threshold = 0.05
+                
+            if current_waypoint_time - start_waypoint_time < 5 and len(rx) == j+1:
+                operate.threshold_angle = (np.pi/180)
+                operate.distance_threshold = 0.01
 
             operate.command['motion'] = [0,0]
             operate.control()

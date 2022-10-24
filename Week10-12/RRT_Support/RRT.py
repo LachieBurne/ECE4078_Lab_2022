@@ -6,6 +6,7 @@ import math
 import cv2
 
 from RRT_Support.Obstacle import Circle
+from util.Helper import get_distance_robot_to_goal
 
 class RRTC:
     """
@@ -29,8 +30,8 @@ class RRTC:
                  obstacle_list=None,
                  width=3,
                  height=3,
-                 expand_dis=0.1,
-                 path_resolution=0.01,
+                 expand_dis=0.15,
+                 path_resolution=0.1,
                  max_points=300):
         """
         Setting Parameter
@@ -229,23 +230,29 @@ class RRTC:
         theta = math.atan2(dy, dx)
         return d, theta
 
-def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx):
+def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx, r_state):
     obstacles = []
-    fruit_safety = 0.15
+    fruit_safety = 0.20
     aruco_safety = 0.20
 
     for fruit_pos in fruit_true_pos:
+        distance_to_fruit = get_distance_robot_to_goal(r_state, fruit_pos)
         print(f'fruit_pos={fruit_pos}')
         print(f'search_pose={search_list_pose[idx]}')
         # If the search fruit is the position or (last fruit is in the position (for second or more fruit))
-        if search_list_pose[idx].tolist() == fruit_pos.tolist() or (idx > 0 and search_list_pose[idx-1].tolist() == fruit_pos.tolist()):
+        if search_list_pose[idx].tolist() == fruit_pos.tolist() or (idx > 0 and search_list_pose[idx-1].tolist() == fruit_pos.tolist()) or (distance_to_fruit <= fruit_safety):
             continue
+            obstacles.append(Circle(fruit_pos[0],fruit_pos[1],distance_to_fruit*0.5))      
         else:
             obstacles.append(Circle(fruit_pos[0],fruit_pos[1],fruit_safety))      
 
     for arucos in aruco_true_pos:
-        # obstacles.append(Rectangle((arucos[0], arucos[1]), aruco_safety, aruco_safety))
-        obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
+        distance_to_marker = get_distance_robot_to_goal(r_state, arucos)
+        if distance_to_marker <= aruco_safety:
+            continue
+            obstacles.append(Circle(arucos[0], arucos[1], distance_to_marker*0.5))
+        else:
+            obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
     return obstacles
 
 def display_path(obs, path):

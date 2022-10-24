@@ -20,7 +20,8 @@ class Drive:
         elif left_speed == right_speed:
             cov = 1
         else:
-            cov = 2
+            cov = 1
 
         self.left_cov = cov
         self.right_cov = cov
+        
