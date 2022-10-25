@@ -84,6 +84,7 @@ class Operate:
         
         # Various flags
         self.next_stage = True
+        self.no_marker_update = False
 
     # wheel control
     def control(self):       
@@ -117,7 +118,7 @@ class Operate:
         elif self.ekf_on: # and not self.debug_flag:
             self.ekf.predict(drive_meas)
             self.ekf.add_landmarks(lms)
-            self.ekf.update(lms)
+            self.ekf.update(lms, self.no_marker_update)
 
     # save images taken by the camera
     def save_image(self):
@@ -259,6 +260,12 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 # Continue to next stage of final demo
                 self.next_stage = True
+                if self.no_marker_update:
+                    self.no_marker_update = False
+                    self.notification = "Unpaused marker mapping"
+                else:
+                    self.no_marker_update = True
+                    self.notification = "Paused marker mapping"
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True

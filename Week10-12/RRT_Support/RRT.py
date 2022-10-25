@@ -281,3 +281,17 @@ def display_path(obs, path):
 
     map = cv2.flip(map, 1)
     cv2.imwrite('RRT_path.png',map)
+
+
+def total_path_length(rx, ry):
+    distance = 0
+    if len(rx) == 0:
+        distance = np.inf
+        return distance
+
+    for i in range(len(rx) - 1):
+        curr_wp = [rx[i], ry[i]]
+        next_wp = [rx[i+1], ry[i+1]]
+        distance += get_distance_robot_to_goal(np.array(curr_wp), np.array(next_wp))
+
+    return distance
