@@ -53,9 +53,10 @@ class EKF:
             (self.robot.state, np.reshape(self.markers, (-1,1), order='F')), axis=0)
         return state
     
-    def set_state_vector(self, state):
+    def set_state_vector(self, state, no_marker_update=False):
         self.robot.state = state[0:3,:]
-        self.markers = np.reshape(state[3:,:], (2,-1), order='F')
+        if not no_marker_update:
+            self.markers = np.reshape(state[3:,:], (2,-1), order='F')
     
     def save_map(self, fname="slam_map.txt"):
         if self.number_landmarks() > 0:
@@ -111,7 +112,7 @@ class EKF:
 
 
     # the update step of EKF
-    def update(self, measurements):
+    def update(self, measurements, no_marker_update = False):
         if not measurements:
             return
         
@@ -143,7 +144,7 @@ class EKF:
         # Correct covariance
         self.P = (np.eye(x.shape[0]) - K @ C) @ self.P
 
-        self.set_state_vector(x)
+        self.set_state_vector(x, no_marker_update)
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3

@@ -679,7 +679,16 @@ if __name__ == "__main__":
         # operate.arrived_goal = operate.goals[:operate.goal_num]
         # rx, ry = path_planning(operate)
         operate.notification = "Planning path"
-        rx, ry = rrt.planning()
+        paths = []
+        distances = []
+        for i in range(5):
+            rx, ry = rrt.planning()
+            paths.append([rx, ry])
+            distances.append(total_path_length(rx, ry))
+        
+        path = [x for _, x in sorted(zip(distances, paths))][0]
+        rx, ry = path
+        
         print(rx, ry)
         time.sleep(2)
 
@@ -740,11 +749,12 @@ if __name__ == "__main__":
 
                 current_waypoint_time = time.time()
                 if current_waypoint_time - start_waypoint_time > 20 and len(rx) == j+1:
-                    operate.threshold_angle = (np.pi/180) * 5
+                    operate.threshold_angle = (np.pi/180) * 10
                     operate.distance_threshold = 0.05
                 
+            current_waypoint_time = time.time()
             if current_waypoint_time - start_waypoint_time < 5 and len(rx) == j+1:
-                operate.threshold_angle = (np.pi/180)
+                operate.threshold_angle = (np.pi/180) * 5
                 operate.distance_threshold = 0.01
 
             operate.command['motion'] = [0,0]
