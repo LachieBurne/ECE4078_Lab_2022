@@ -261,11 +261,11 @@ class Operate:
                 # Stops the markers from being updated and lowers Q value. Useful for fruit mapping.
                 if self.no_marker_update:
                     self.no_marker_update = False
-                    self.mapping = True
+                    self.ekf.mapping = True
                     self.notification = "Unpaused marker mapping"
                 else:
                     self.no_marker_update = True
-                    self.mapping = False
+                    self.ekf.mapping = False
                     self.notification = "Paused marker mapping"
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
