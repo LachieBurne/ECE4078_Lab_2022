@@ -94,7 +94,7 @@ class Operate:
         self.fruits = []
         
         self.no_planning = True
-        self.threshold_angle = (np.pi/180)
+        self.threshold_angle = (np.pi/180) * 5
         self.distance_threshold = 0.01
 
     # wheel control
@@ -354,8 +354,6 @@ class Operate:
                     fruit_list_e.append(fruit_name)
                     continue
         print("--------Search order: ", fruit_list_e, "--------")
-        # time.sleep(3)
-
         return fruit_list_e, fruit_true_pos, aruco_true_pos, search_list_pose, fruit_list
 
     def read_search_list(self, args):
@@ -665,29 +663,43 @@ if __name__ == "__main__":
     # visualise
     operate.draw(canvas)
     pygame.display.update()
+
+    print("operate.goals: ")
+    print(operate.goals)
+    print("fruits list: ")
+    print(fruits_list)
     
     for i in range(len(operate.goals)):
         operate.notification = f"Finding the {fruits_list[i]}"
         reset_robot_pose = True
         state = operate.ekf.robot.state[:2].squeeze()
-        obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i, state)
-        rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
-        # print(operate.ekf.markers)
-        # a_star.plan_path(r_state=state, goals=operate.goals, goal_num=i, markers=operate.ekf.markers, unknown_obs=operate.unknown_obs)
-        # rx, ry = a_star.rx, a_star.ry
-        # operate.goal_num = i
-        # operate.arrived_goal = operate.goals[:operate.goal_num]
-        # rx, ry = path_planning(operate)
-        operate.notification = "Planning path"
-        paths = []
-        distances = []
-        for i in range(5):
-            rx, ry = rrt.planning()
-            paths.append([rx, ry])
-            distances.append(total_path_length(rx, ry))
-        
-        path = [x for _, x in sorted(zip(distances, paths))][0]
-        rx, ry = path
+
+        try:
+            obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i, state, f_safety=0.2, a_safety=0.25)
+            rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
+            operate.notification = "Planning path"
+            paths = []
+            distances = []
+            for _ in range(1):
+                rx, ry = rrt.planning()
+                paths.append([rx, ry])
+                distances.append(total_path_length(rx, ry))
+            
+            path = [x for _, x in sorted(zip(distances, paths))][0]
+            rx, ry = path
+        except: 
+            obstacles = get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, i, state, f_safety=0.2, a_safety=0.22)
+            rrt = RRTC(start=state, goal=operate.goals[i], obstacle_list=obstacles)
+            operate.notification = "Planning path"
+            paths = []
+            distances = []
+            for _ in range(1):
+                rx, ry = rrt.planning()
+                paths.append([rx, ry])
+                distances.append(total_path_length(rx, ry))
+            
+            path = [x for _, x in sorted(zip(distances, paths))][0]
+            rx, ry = path
         
         print(rx, ry)
         time.sleep(2)
@@ -706,21 +718,21 @@ if __name__ == "__main__":
             while dist > operate.distance_threshold:
                 fruit_distance = get_distance_robot_to_goal(robot_pose,search_list_pose[i])
                 dist = get_distance_robot_to_goal(robot_pose, np.array([waypoint[0], waypoint[1]]))
-                if fruit_distance < 0.3:
+                if fruit_distance < 0.25:
                     fruit_found = True
                     break
-                if reset_robot_pose:
-                    if abs(operate.ekf.robot.state[2]) > 0.01:
-                        operate.notification = "Resetting robot pose"
-                        operate.reset_robot_pose()
+                # if reset_robot_pose:
+                #     if abs(operate.ekf.robot.state[2]) > 0.01:
+                #         operate.notification = "Resetting robot pose"
+                #         operate.reset_robot_pose()
                         
-                    else:
-                        reset_robot_pose = False
-                        operate.command['motion'] = [0,0]
-                        drive_meas = operate.control()
-                        operate.update_slam(drive_meas)
-                        time.sleep(1)
-                        operate.notification = f"Finding the {fruits_list[i]}"
+                #     else:
+                #         reset_robot_pose = False
+                #         operate.command['motion'] = [0,0]
+                #         drive_meas = operate.control()
+                #         operate.update_slam(drive_meas)
+                #         time.sleep(1)
+                #         operate.notification = f"Finding the {fruits_list[i]}"
                 else:
                     if int((time.time() - print_time)) % 2 == 0:
                         print_time = time.time()
@@ -748,12 +760,12 @@ if __name__ == "__main__":
                 pygame.display.update()
 
                 current_waypoint_time = time.time()
-                if current_waypoint_time - start_waypoint_time > 20 and len(rx) == j+1:
+                if current_waypoint_time - start_waypoint_time > 20 and len(rx) != j+1:
                     operate.threshold_angle = (np.pi/180) * 10
                     operate.distance_threshold = 0.05
                 
             current_waypoint_time = time.time()
-            if current_waypoint_time - start_waypoint_time < 5 and len(rx) == j+1:
+            if current_waypoint_time - start_waypoint_time < 5:
                 operate.threshold_angle = (np.pi/180) * 5
                 operate.distance_threshold = 0.01
 

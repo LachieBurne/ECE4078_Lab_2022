@@ -230,27 +230,35 @@ class RRTC:
         theta = math.atan2(dy, dx)
         return d, theta
 
-def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx, r_state):
+def get_obstacles(fruit_true_pos, aruco_true_pos, search_list_pose, idx, r_state, f_safety, a_safety):
     obstacles = []
-    fruit_safety = 0.20
-    aruco_safety = 0.20
+    fruit_safety = f_safety
+    aruco_safety = a_safety
 
     for fruit_pos in fruit_true_pos:
         distance_to_fruit = get_distance_robot_to_goal(r_state, fruit_pos)
         print(f'fruit_pos={fruit_pos}')
         print(f'search_pose={search_list_pose[idx]}')
         # If the search fruit is the position or (last fruit is in the position (for second or more fruit))
-        if search_list_pose[idx].tolist() == fruit_pos.tolist() or (idx > 0 and search_list_pose[idx-1].tolist() == fruit_pos.tolist()) or (distance_to_fruit <= fruit_safety):
+        if search_list_pose[idx].tolist() == fruit_pos.tolist(): # or (idx > 0 and search_list_pose[idx-1].tolist() == fruit_pos.tolist()):
             continue
+        elif distance_to_fruit <= fruit_safety and distance_to_fruit > 0.05:
+            print("distance:")
+            print(distance_to_fruit)
             obstacles.append(Circle(fruit_pos[0],fruit_pos[1],distance_to_fruit*0.5))      
+        elif distance_to_fruit <= 0.05:
+            continue
         else:
             obstacles.append(Circle(fruit_pos[0],fruit_pos[1],fruit_safety))      
 
     for arucos in aruco_true_pos:
         distance_to_marker = get_distance_robot_to_goal(r_state, arucos)
-        if distance_to_marker <= aruco_safety:
-            continue
+        if distance_to_marker <= aruco_safety and distance_to_marker > 0.07:
             obstacles.append(Circle(arucos[0], arucos[1], distance_to_marker*0.5))
+            print("distance:")
+            print(distance_to_marker)
+        elif distance_to_marker <= 0.07:
+            continue
         else:
             obstacles.append(Circle(arucos[0], arucos[1], aruco_safety))
     return obstacles

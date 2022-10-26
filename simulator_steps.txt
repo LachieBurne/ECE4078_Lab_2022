@@ -1,0 +1,58 @@
+Steps for simulated robot:
+1. Run this command in new terminal:
+source ~/catkin_ws/devel/setup.bash;roslaunch penguinpi_gazebo ECE4078.launch
+
+2. Place the map file you will be using in catkin_ws/src/penguinpi_gazebo
+
+3. Once you have selected the map you will be using, generate the texture file for the sim in new terminal:
+python3 generate_texture --map YOUR_MAP_HERE --search_list SEARCH_LIST_HERE
+
+4. Place the texture file in catkin_ws/src/penguinpi_gazebo/wordls/materials/textures
+
+5. Run this command:
+source ~/catkin_ws/devel/setup.bash;rosrun penguinpi_gazebo scene_manager.py -l MAP_HERE
+
+6. Run:
+python3 operateEst.py
+
+NOTE1: Make sure you move and rotate the pibot with small movements, otherwise the ekf and robot will de-sync
+
+NOTE2: Periodically save the SLAM map with 's', pause the ekf with 'enter' and run this command to check the slam score:
+python3 mapping_eval.py --true-map MAP_HERE --slam-est lab_output/slam.txt
+
+NOTE3: IF YOU GET A SLAM SCORE <0.03, THAT'S GOOD ENOUGH, PRESS 'SPACEBAR' TO PAUSE THE MARKER MAPPING. If you want to keep going,
+rename slam.txt so you don't overwrite it in-case the score goes up.
+
+7. With a SLAM score < 0.03 and marker updating paused (by pressing 'spacebar'), begin taking photos of fruit with 'i'.
+
+NOTE1: Try to take photos of fruit by themselves when possible. Get as many markers in frame as possible. 
+
+NOTE2: Pay extra attention to fruit on the search list, and any fruit the robot will have to drive past when searching.
+
+8. When you have taken enough photos, pause SLAM again with 'enter' and leave the gazebo open just in case you need to go back.
+
+9. Run:
+python3 TargetPoseEst.py --using_sim
+
+NOTE1: MAKE SURE YOU USE --using_sim.
+
+10. Check the fruit score with:
+python3 mapping_eval.py --true-map MAP_HERE --target-est lab_output/targets.txt --target-only
+
+NOTE1: Check each fruits error score and the average. A good average is anything < 0.1. 
+
+NOTE2: If the average is somewhat high, check to see if there is one or two fruits with high error. If so,
+delete the images of these fruit and take new ones in the sim. This is why it was left open.
+
+NOTE3: IF YOU TAKE NEW PICTURES MAKE SURE TO RENAME THEM TO THE ONES YOU DELETED IN LAB_OUTPUT
+
+11. Run:
+python3 slamconverter.py --slam_map lab_output/BEST_SLAM_HERE --fruit_map lab_output/targets.txt
+
+12. Run:
+python3 operate_level2.py --map output_map.txt --search_list SEARCH_LIST_HERE
+
+13. PRAY
+
+NOTE1: If a run immediately looks bad, cut your losses and reset. The goal is to get as many runs in possible, we only need one good one.
+	

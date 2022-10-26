@@ -363,8 +363,8 @@ if __name__ == "__main__":
     weight_path = f'final_weights/{weights_filename}'
 
     #Make sure the weight file corresponds to the test image.
-
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=weight_path, force_reload=True)
+    force_reload = True if USING_SIM else False
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=weight_path, force_reload=force_reload)
     #Downloads from github once. We can make it do this locally if necessary.
     
 
