@@ -36,8 +36,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--slam_map", type=str, default="targets.txt")
-    parser.add_argument("--fruit_map", type=str, default="slam.txt")
+    parser.add_argument("--slam_map", type=str, default="lab_output/targets.txt")
+    parser.add_argument("--fruit_map", type=str, default="lab_output/slam.txt")
     args, _ = parser.parse_known_args()
 
     combine_everything(args.slam_map, args.fruit_map)

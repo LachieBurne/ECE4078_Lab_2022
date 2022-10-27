@@ -41,6 +41,6 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--map', type=str, default='true_map.txt')
-    parser.add_argument('--search_list', type=str, default='slam.txt')
+    parser.add_argument('--search_list', type=str, default='search_list.txt')
     args, _ = parser.parse_known_args()
     main_loop(args)

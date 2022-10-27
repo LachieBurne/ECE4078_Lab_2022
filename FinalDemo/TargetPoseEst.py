@@ -25,7 +25,7 @@ def get_YOLO_stuff(fruit_select):
 
     u_0 = 640/2 if USING_SIM else 320/2
     v_0 = 480/2 if USING_SIM else 240/2
-   
+
    
    
     fruit_xcent = (fruit_xmin + fruit_xmax)/2 - u_0
