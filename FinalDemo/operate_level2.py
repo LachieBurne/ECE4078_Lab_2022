@@ -97,9 +97,6 @@ class Operate:
         self.threshold_angle = (np.pi/180) * 5
         self.distance_threshold = 0.01
 
-        # initialise a time variable to print robot metrics every x times per second
-        self.print_10 = np.round(time.time(), 2)
-
     # wheel control
     def control(self):
         if args.play_data:
@@ -405,9 +402,7 @@ class Operate:
             else:
                 theta_turn += 2 * np.pi
 
-        # prints robot metrics 10 times a second
-        if (np.round(time.time(), 2) - operate.print_10) % 0.1 == 0:
-            print(f"Turn angle: {str(theta_turn)[1:4]}")
+        print(f"Turn angle: {np.round(theta_turn,4)[0]}")
 
         if abs(theta_turn) >= self.threshold_angle:
             if y_diff >= 0:
@@ -591,8 +586,7 @@ if __name__ == "__main__":
                     fruit_found = True
                     break
                 else:
-                    if (np.round(time.time(), 2) - operate.print_10) % 0.1 == 0:
-                        print(f"Distance to waypoint: {dist}")
+                    print(f"Distance to waypoint: {np.round(dist,4)}")
                     operate.drive_to_point(waypoint)
 
                 operate.take_pic()
